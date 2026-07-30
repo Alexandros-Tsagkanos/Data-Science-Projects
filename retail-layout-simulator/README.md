@@ -73,9 +73,10 @@ model omits.
 
 ## Status
 
-The manuscript, its figures and the experimental results are **not
-included here** — they are held back until the paper is published. The
-two screenshots above show the application itself.
+The source repository is **public**: the full simulator, the headless
+experiment runners, the pytest numeric-core suite and the reproduction
+drivers are all there.
 
-The repository is currently private and will be opened alongside
-publication.
+The **manuscript itself is withheld** while the paper is under
+submission, and will be added on publication. The two screenshots above
+show the application.

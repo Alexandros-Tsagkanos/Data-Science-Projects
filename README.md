@@ -20,8 +20,8 @@ interval-valued statistics in R, and dashboard work in Tableau.
 | [interval-analysis-returns](interval-analysis-returns/) | Statistics / R | Classical and interval-valued analysis of DIA ETF returns against 15 constituent stocks — regression, factor analysis, SEM |
 | [tableau-visualization](tableau-visualization/) | Visualization | A six-worksheet Tableau workbook over a retail orders dataset |
 | [fairness-in-language-models](fairness-in-language-models/) | Seminar | A talk on how fairness is formally defined in language models, and where the definitions conflict |
-| [retail-layout-simulator](retail-layout-simulator/) | Simulation / research | Multi-floor agent-based retail simulator with dataset calibration and a genetic-algorithm layout optimizer — summary and link |
-| [student-dropout-benchmark](student-dropout-benchmark/) | Research | Generative, semi-supervised and fair learning for dropout prediction — summary and link |
+| [retail-layout-simulator](retail-layout-simulator/) | Simulation / research | Multi-floor agent-based retail simulator with dataset calibration and a genetic-algorithm layout optimizer — summary, links to [its own repo](https://github.com/Asinoth/retail-layout-simulator) |
+| [student-dropout-benchmark](student-dropout-benchmark/) | Research | Generative, semi-supervised and fair learning for dropout prediction — summary, links to [its own repo](https://github.com/Asinoth/edm-dropout-benchmark) |
 
 Each project directory has its own README describing the problem, the
 approach and how to run it.
