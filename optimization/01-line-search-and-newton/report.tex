@@ -1,0 +1,821 @@
+\documentclass[a4paper,12pt]{article}
+
+% --- Πακέτα Γλώσσας και Κωδικοποίησης ---
+\usepackage[utf8]{inputenc}
+\usepackage[greek,english]{babel}
+\usepackage{alphabeta} 
+
+% --- Μαθηματικά και Γραφικά ---
+\usepackage{amsmath, amssymb, amsfonts}
+\usepackage{graphicx}
+\usepackage{float} 
+\usepackage{geometry}
+\geometry{left=2.5cm, right=2.5cm, top=2.5cm, bottom=2.5cm}
+
+% --- Ρυθμίσεις Hyperlinks ---
+\usepackage{hyperref}
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue,
+    citecolor=black,
+    urlcolor=cyan
+}
+
+% --- Πακέτα για Κώδικα (Python) ---
+\usepackage{listings}
+\usepackage{xcolor}
+
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{0.95,0.95,0.92}
+
+\lstdefinestyle{mystyle}{
+    backgroundcolor=\color{backcolour},   
+    commentstyle=\color{codegreen},
+    keywordstyle=\color{magenta},
+    numberstyle=\tiny\color{codegray},
+    stringstyle=\color{codepurple},
+    basicstyle=\ttfamily\footnotesize,
+    breakatwhitespace=false,         
+    breaklines=true,                 
+    captionpos=b,                    
+    keepspaces=true,                 
+    numbers=left,                    
+    numbersep=5pt,                  
+    showspaces=false,                
+    showstringspaces=false,
+    showtabs=false,                  
+    tabsize=2
+}
+\lstset{style=mystyle}
+
+\begin{document}
+
+% --- Σελίδα Τίτλου ---
+\begin{titlepage}
+    \centering
+    \vspace*{2cm}
+    
+    {\Huge \textbf{Ανάλυση Αποφάσεων και Βελτιστοποίηση}}
+    
+    \vspace{1.5cm}
+    
+    {\LARGE \textbf{Εργασία 1}}
+    
+    \vspace{3cm}
+    
+    {\Large
+    \textbf{Φοιτητής:} Τσαγκανός Αλέξανδρος\\
+    \vspace{0.2cm}
+    \textbf{ΑΜ:} UP1125886
+    }
+    
+    \vspace{2cm}
+    
+    {\Large
+    \textbf{Διδάσκουσα:} Θ. Γράψα
+    }
+    
+    \vfill
+    
+    {\Large \today}
+    
+\end{titlepage}
+
+% --- Αλλαγή σελίδας για την έναρξη των ασκήσεων ---
+\newpage
+
+\section*{ΜΕΡΟΣ I (Βασικά Θέματα Θεωρίας)}
+
+% Εδώ συνεχίζει η Άσκηση 1 (a, b, c, d, e, f) όπως τα έχω γράψει...
+
+% ---------------------------------------------------------------------
+% ΑΣΚΗΣΗ 1
+% ---------------------------------------------------------------------
+\section*{Άσκηση 1}
+
+% --- Ερώτημα (a) ---
+\subsubsection*{1. Μη Γραμμικός Προγραμματισμός Χωρίς Περιορισμούς}
+\textbf{Μαθηματική Διατύπωση:}
+Το πρόβλημα ορίζεται ως η εύρεση του διανύσματος $x \in \mathbb{R}^n$ που ελαχιστοποιεί μια μη γραμμική αντικειμενική συνάρτηση $f: \mathbb{R}^n \rightarrow \mathbb{R}$.
+\begin{equation}
+ \min_{x \in \mathbb{R}^n} f(x)
+\end{equation}
+
+\textbf{Πραγματικό Πρόβλημα: Εκπαίδευση Βαθέων Νευρωνικών Δικτύων (Deep Learning).}
+Η εκπαίδευση ενός μοντέλου Deep Learning αποτελεί πρόβλημα ελαχιστοποίησης μιας συνάρτησης απώλειας (loss function), $L(w)$, ως προς τα βάρη $w$. Η συνάρτηση είναι εξαιρετικά μη γραμμική και μη κυρτή. Αντιμετωπίζεται ως πρόβλημα χωρίς περιορισμούς με αλγορίθμους όπως ο SGD \cite{goodfellow}.
+
+\subsubsection*{2. Μη Γραμμικός Προγραμματισμός Με Περιορισμούς}
+\textbf{Μαθηματική Διατύπωση:}
+Ζητείται η ελαχιστοποίηση της $f(x)$ υπό την παρουσία ισοτικών ή/και ανισοτικών περιορισμών:
+\begin{equation}
+\begin{aligned}
+& \min_{x \in \mathbb{R}^n} f(x) \\
+& \text{subject to: } \\
+& c_i(x) = 0, \quad i \in \mathcal{E} \\
+& c_j(x) \geq 0, \quad j \in \mathcal{I}
+\end{aligned}
+\end{equation}
+
+\textbf{Πραγματικό Πρόβλημα: Βελτιστοποίηση Ροής Ισχύος (Optimal Power Flow).}
+Στόχος είναι η ελαχιστοποίηση του κόστους παραγωγής ενέργειας, τηρώντας τους φυσικούς νόμους του δικτύου (μη γραμμικές εξισώσεις ροής) και τα λειτουργικά όρια \cite{momoh}.
+
+\subsubsection*{3. Γραμμικός Προγραμματισμός (Linear Programming)}
+\textbf{Μαθηματική Διατύπωση:}
+Η αντικειμενική συνάρτηση και οι περιορισμοί είναι γραμμικοί:
+\begin{equation}
+\begin{aligned}
+& \min_{x} c^T x \\
+& \text{subject to: } Ax = b, \quad x \geq 0
+\end{aligned}
+\end{equation}
+
+\textbf{Πραγματικό Πρόβλημα: Ροή Δικτύου Ελαχίστου Κόστους (Min-Cost Network Flow).}
+Αφορά τη δρομολόγηση δεδομένων ή αγαθών μέσω ενός δικτύου με περιορισμένη χωρητικότητα, ελαχιστοποιώντας το κόστος μεταφοράς. Οι περιορισμοί διατήρησης ροής και χωρητικότητας είναι γραμμικοί \cite{bertsimas}.
+
+
+% --- Ερώτημα (b) ---
+\subsection*{b) Μέθοδοι Γραμμικής Αναζήτησης (Line Search)}
+
+\textbf{Εκφώνηση:}
+Να δώσετε τον επαναληπτικό τύπο των μεθόδων γραμμικής αναζήτησης και τη συνάρτηση που πρέπει να ελαχιστοποιεί σε κάθε επανάληψη το μήκος βήματος $\alpha_k$. Να τεκμηριώσετε την απάντησή σας.
+
+\textbf{Απάντηση:}
+
+\textbf{Επαναληπτικός Τύπος:}
+$$ x_{k+1} = x_k + \alpha_k p_k $$
+Όπου $p_k$ η κατεύθυνση καθόδου και $\alpha_k > 0$ το μήκος βήματος.
+
+\textbf{Συνάρτηση προς Ελαχιστοποίηση:}
+Στην Ακριβή Γραμμική Αναζήτηση (Exact Line Search), το $\alpha_k$ ελαχιστοποιεί τη μονοδιάστατη συνάρτηση:
+$$ \phi(\alpha) = f(x_k + \alpha p_k), \quad \alpha > 0 $$
+Δηλαδή: $\alpha_k = \arg \min_{\alpha > 0} \phi(\alpha)$.
+
+\textbf{Τεκμηρίωση:}
+Η ακριβής ελαχιστοποίηση εξασφαλίζει τη μέγιστη μείωση της $f$ κατά την κατεύθυνση $p_k$. Θεωρητικά, αυτό οδηγεί σε ορθογωνιότητα της νέας κλίσης με την κατεύθυνση έρευνας: $\nabla f(x_{k+1})^T p_k = 0$. Στην πράξη, συχνά προτιμώνται Inexact μέθοδοι για υπολογιστικούς λόγους, όπως αναφέρεται και στη βιβλιογραφία \cite{nocedal}.
+
+% --- Ερώτημα (c) ---
+\subsection*{c) Inexact Line Search και Καταλληλόλητα}
+
+\textbf{Εκφώνηση:}
+Γιατί χρησιμοποιούνται μη ακριβείς συνθήκες; Περιγραφή μίας εξ αυτών (με σχήμα). Ποιες είναι κατάλληλες για Newton, Quasi-Newton, Conjugate Gradient.
+
+\textbf{Απάντηση:}
+
+\textbf{Γιατί Inexact:}
+Η ακριβής εύρεση του ελαχίστου είναι υπολογιστικά δαπανηρή και συχνά περιττή. Οι Inexact μέθοδοι αναζητούν απλώς μια \textit{επαρκή μείωση} (sufficient decrease) με πολύ λιγότερο κόστος, διασφαλίζοντας παράλληλα τη σύγκλιση.
+
+\textbf{Συνθήκη Armijo (Sufficient Decrease):}
+Ορίζεται ως:
+$$ f(x_k + \alpha p_k) \leq f(x_k) + c_1 \alpha \nabla f(x_k)^T p_k, \quad c_1 \in (0, 1) $$
+Γεωμετρικά, η τιμή της συνάρτησης πρέπει να βρίσκεται κάτω από την ευθεία με κλίση $c_1 \nabla f_k^T p_k$.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.7\textwidth]{armijo_plot.png}
+    \caption{Γεωμετρική απεικόνιση της συνθήκης Armijo. Η πράσινη περιοχή δείχνει τα αποδεκτά μήκη βήματος.}
+    \label{fig:armijo}
+\end{figure}
+
+\textbf{Καταλληλόλητα ανά Μέθοδο:}
+\begin{itemize}
+    \item \textbf{Newton:} \textit{Armijo}. Η κατεύθυνση Newton είναι συνήθως πολύ καλή, οπότε μια απλή συνθήκη μείωσης αρκεί.
+    \item \textbf{Quasi-Newton (BFGS):} \textit{Wolfe Conditions}. Απαιτούνται για να διασφαλιστεί η θετική οριστότητα του πίνακα προσέγγισης του Hessian ($B_{k+1}$).
+    \item \textbf{Conjugate Gradient:} \textit{Strong Wolfe Conditions}. Απαραίτητες για τη διατήρηση της ιδιότητας της συζυγίας (conjugacy) και την εξασφάλιση κατεύθυνσης καθόδου \cite{nocedal}.
+\end{itemize}
+
+% --- Ερώτημα (d) ---
+\subsection*{d) Συνθήκη Κατεύθυνσης Καθόδου και Steepest Descent}
+
+\textbf{Εκφώνηση:}
+Αν $g_k = \nabla f(x^{(k)})$ και $d_k$ η κατεύθυνση μιας επαναληπτικής μεθόδου σε μια επανάληψη $k$, να διατυπώσετε τη συνθήκη που πρέπει να ισχύει ώστε η κατεύθυνση $d_k$ να είναι κατεύθυνση μείωσης. Να αιτιολογήσετε την απάντησή σας, κάνοντας και κατάλληλο σχήμα. Να μελετήσετε την κατεύθυνση της μεθόδου Steepest Descent.
+
+\textbf{Απάντηση:}
+
+\textbf{Συνθήκη Κατεύθυνσης Μείωσης (Descent Direction Condition):}
+Για να είναι η $d_k$ κατεύθυνση μείωσης (descent direction) στο σημείο $x_k$, πρέπει η παράγωγος της συνάρτησης κατά την κατεύθυνση αυτή να είναι αρνητική. Μαθηματικά, αυτό εκφράζεται μέσω του εσωτερικού γινομένου της κλίσης με την κατεύθυνση:
+\begin{equation}
+    g_k^T d_k < 0
+\end{equation}
+ή ισοδύναμα $\nabla f(x_k)^T d_k < 0$.
+
+\textbf{Αιτιολόγηση:}
+Αναπτύσσοντας τη συνάρτηση $f$ κατά Taylor γύρω από το $x_k$ για ένα μικρό βήμα $\alpha > 0$:
+$$ f(x_k + \alpha d_k) \approx f(x_k) + \alpha \nabla f(x_k)^T d_k $$
+Για να ισχύει $f(x_k + \alpha d_k) < f(x_k)$ (μείωση της τιμής), πρέπει ο όρος $\alpha \nabla f(x_k)^T d_k$ να είναι αρνητικός. Εφόσον $\alpha > 0$, πρέπει αναγκαστικά $\nabla f(x_k)^T d_k < 0$.
+Γεωμετρικά, αυτό σημαίνει ότι η γωνία $\theta$ μεταξύ του διανύσματος της κλίσης $g_k$ και της κατεύθυνσης $d_k$ πρέπει να είναι αμβλεία ($90^\circ < \theta \leq 270^\circ$), δηλαδή $\cos \theta < 0$.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.7\textwidth]{descent_direction.png}
+    \caption{Γεωμετρική απεικόνιση κατευθύνσεων. Η $g_k$ δείχνει την κατεύθυνση μέγιστης αύξησης. Κάθε διάνυσμα στο ημιεπίπεδο απέναντι από την $g_k$ (όπως η $d_{gen}$ και η $d_k$) είναι κατεύθυνση μείωσης.}
+    \label{fig:descent}
+\end{figure}
+
+\textbf{Μελέτη της Μεθόδου Steepest Descent:}
+Στη μέθοδο της Απότομης Καθόδου (Steepest Descent), επιλέγουμε την κατεύθυνση που παρέχει τη μέγιστη δυνατή μείωση της συνάρτησης (τοπικά).
+Η κατεύθυνση αυτή ορίζεται ως:
+\begin{equation}
+    d_k = -g_k = -\nabla f(x_k)
+\end{equation}
+Ελέγχουμε αν ικανοποιείται η συνθήκη μείωσης:
+$$ g_k^T d_k = g_k^T (-g_k) = - \|g_k\|^2 $$
+Εφόσον η Ευκλείδεια νόρμα στο τετράγωνο είναι πάντα θετική (για $g_k \neq 0$), το γινόμενο είναι πάντα αρνητικό.
+Συνεπώς, η κατεύθυνση της αρνητικής κλίσης είναι πάντα κατεύθυνση μείωσης (και μάλιστα η βέλτιστη τοπικά).
+
+% --- Ερώτημα (e) ---
+\subsection*{e) Μέθοδοι Quasi-Newton}
+
+\textbf{Εκφώνηση:}
+Να δώσετε τον επαναληπτικό τύπο των Quasi Newton μεθόδων, να σχολιάσετε το βασικό τους πλεονέκτημα και να δώσετε μεθόδους που ανήκουν σε αυτή την κατηγορία.
+
+\textbf{Απάντηση:}
+
+\textbf{Επαναληπτικός Τύπος:}
+Ο γενικός επαναληπτικός τύπος των μεθόδων Quasi-Newton είναι:
+\begin{equation}
+    x_{k+1} = x_k - \alpha_k B_k^{-1} \nabla f(x_k)
+\end{equation}
+ή ισοδύναμα, αν ορίσουμε $H_k = B_k^{-1}$ ως την προσέγγιση του αντίστροφου Hessian:
+\begin{equation}
+    x_{k+1} = x_k - \alpha_k H_k \nabla f(x_k)
+\end{equation}
+Όπου:
+\begin{itemize}
+    \item $x_k$: Η τρέχουσα προσέγγιση της λύσης.
+    \item $\alpha_k$: Το μήκος βήματος (step length), που υπολογίζεται μέσω Line Search (συνήθως με συνθήκες Wolfe).
+    \item $B_k$: Ένας συμμετρικός θετικά ορισμένος πίνακας που προσεγγίζει τον πίνακα Hessian $\nabla^2 f(x_k)$. Ο πίνακας αυτός ενημερώνεται σε κάθε επανάληψη βάσει της αλλαγής στην κλίση, ώστε να ικανοποιεί την \textit{εξίσωση secant}:
+    $$ B_{k+1} (x_{k+1} - x_k) = \nabla f(x_{k+1}) - \nabla f(x_k) $$
+\end{itemize}
+
+\textbf{Βασικό Πλεονέκτημα:}
+Το κύριο πλεονέκτημα των μεθόδων Quasi-Newton είναι ότι επιτυγχάνουν ρυθμό σύγκλισης \textbf{υπερ-γραμμικό (superlinear convergence)}, πλησιάζοντας την ταχύτητα της μεθόδου Newton, \textbf{χωρίς όμως να απαιτούν τον υπολογισμό του πίνακα Hessian} και την επίλυση γραμμικού συστήματος σε κάθε βήμα.
+Αυτό μειώνει δραματικά το υπολογιστικό κόστος ανά επανάληψη (από $O(n^3)$ σε $O(n^2)$), καθιστώντας τες ιδανικές για προβλήματα μεσαίας και μεγάλης κλίμακας όπου ο υπολογισμός του Hessian είναι απαγορευτικός.
+
+\textbf{Μέθοδοι της Κατηγορίας και Τύποι Ενημέρωσης:}
+Για τη διατύπωση των τύπων, ορίζουμε τα διανύσματα διαφοράς θέσης και κλίσης:
+$$ s_k = x_{k+1} - x_k, \quad y_k = \nabla f(x_{k+1}) - \nabla f(x_k) $$
+Οι παρακάτω τύποι αφορούν την ενημέρωση του πίνακα $H_k$ (προσέγγιση του αντιστρόφου Hessian):
+
+\begin{enumerate}
+    \item \textbf{BFGS (Broyden–Fletcher–Goldfarb–Shanno):}
+    Η πιο δημοφιλής μέθοδος (Rank-2 update). Διατηρεί τη θετική οριστότητα αν $y_k^T s_k > 0$.
+    \begin{equation}
+        H_{k+1} = \left(I - \frac{s_k y_k^T}{y_k^T s_k}\right) H_k \left(I - \frac{y_k s_k^T}{y_k^T s_k}\right) + \frac{s_k s_k^T}{y_k^T s_k}
+    \end{equation}
+
+    \item \textbf{DFP (Davidon–Fletcher–Powell):}
+    Η ιστορικά πρώτη μέθοδος (Rank-2 update), δυϊκή της BFGS.
+    \begin{equation}
+        H_{k+1} = H_k - \frac{H_k y_k y_k^T H_k}{y_k^T H_k y_k} + \frac{s_k s_k^T}{y_k^T s_k}
+    \end{equation}
+
+    \item \textbf{SR1 (Symmetric Rank-1):}
+    Μια απλούστερη ενημέρωση βαθμού-1. Δεν εγγυάται θετική οριστότητα, αλλά προσεγγίζει καλύτερα τον πραγματικό Hessian σε κάποιες περιπτώσεις.
+    \begin{equation}
+        H_{k+1} = H_k + \frac{(s_k - H_k y_k)(s_k - H_k y_k)^T}{(s_k - H_k y_k)^T y_k}
+    \end{equation}
+\end{enumerate}
+% --- Ερώτημα (f) ---
+\subsection*{f) Μέθοδοι Συζυγών Κλίσεων (Conjugate Gradient)}
+
+\textbf{Εκφώνηση:}
+Να δώσετε τον επαναληπτικό τύπο των μεθόδων συζυγών κλίσεων (conjugate gradient): Fletcher-Reeves (FR), Polak-Ribiere (PR) και Perry (P). Ποιο είναι το πλεονέκτημά τους έναντι των Quasi Newton μεθόδων; Να αιτιολογήσετε που οφείλεται το πλεονέκτημά τους.
+
+\textbf{Απάντηση:}
+
+\textbf{Επαναληπτικός Τύπος:}
+Στις μεθόδους μη γραμμικών συζυγών κλίσεων, η νέα κατεύθυνση έρευνας $d_{k+1}$ υπολογίζεται ως γραμμικός συνδυασμός της τρέχουσας αρνητικής κλίσης και της προηγούμενης κατεύθυνσης:
+\begin{equation}
+    d_{k+1} = -\nabla f(x_{k+1}) + \beta_{k+1} d_k
+\end{equation}
+με $d_0 = -\nabla f(x_0)$.
+Η παράμετρος $\beta_{k+1}$ διαφέρει ανάλογα με τη μέθοδο. Ορίζουμε $g_k = \nabla f(x_k)$ και $y_k = g_{k+1} - g_k$.
+
+\textbf{Τύποι Υπολογισμού του $\beta_{k+1}$:}
+\begin{enumerate}
+    \item \textbf{Fletcher-Reeves (FR):}
+    \begin{equation}
+        \beta_{k+1}^{FR} = \frac{\|g_{k+1}\|^2}{\|g_k\|^2} = \frac{g_{k+1}^T g_{k+1}}{g_k^T g_k}
+    \end{equation}
+    
+    \item \textbf{Polak-Ribiere (PR):}
+    Θεωρείται γενικά πιο αποδοτική από την FR, καθώς κάνει "restart" όταν χάνεται η συζυγία.
+    \begin{equation}
+        \beta_{k+1}^{PR} = \frac{g_{k+1}^T (g_{k+1} - g_k)}{\|g_k\|^2} = \frac{g_{k+1}^T y_k}{g_k^T g_k}
+    \end{equation}
+    
+    \item \textbf{Perry (P):}
+    Μια πιο σύγχρονη παραλλαγή που προσπαθεί να προσεγγίσει τη συμπεριφορά των Quasi-Newton μεθόδων χωρίς πίνακα.
+    \begin{equation}
+        \beta_{k+1}^{P} = \frac{g_{k+1}^T (y_k - s_k)}{y_k^T d_k} \quad \text{(όπου } s_k = x_{k+1} - x_k = \alpha_k d_k \text{)}
+    \end{equation}
+    \textit{Σημείωση: Υπάρχουν διάφορες παραλλαγές του τύπου Perry στη βιβλιογραφία, συχνά συνδεδεμένες με τη συνθήκη συζυγίας του Dai-Liao.}
+\end{enumerate}
+
+\textbf{Πλεονέκτημα έναντι Quasi-Newton:}
+Το κύριο πλεονέκτημα των μεθόδων Conjugate Gradient είναι οι εξαιρετικά χαμηλές απαιτήσεις σε \textbf{μνήμη (storage requirements)}.
+
+\textbf{Αιτιολόγηση:}
+\begin{itemize}
+    \item Οι μέθοδοι \textbf{Quasi-Newton} (π.χ. BFGS) απαιτούν την αποθήκευση και ενημέρωση ενός πίνακα $n \times n$ ($B_k$ ή $H_k$). Αυτό συνεπάγεται πολυπλοκότητα χώρου $O(n^2)$. Για προβλήματα μεγάλης κλίμακας (π.χ. $n > 10^5$ μεταβλητές), η αποθήκευση του πίνακα είναι αδύνατη στη μνήμη RAM.
+    \item Οι μέθοδοι \textbf{Conjugate Gradient} απαιτούν την αποθήκευση μόνο λίγων διανυσμάτων μήκους $n$ (π.χ. $x, g, d$). Η πολυπλοκότητα χώρου είναι γραμμική $O(n)$.
+\end{itemize}
+Συνεπώς, για προβλήματα πολύ μεγάλης κλίμακας (Large-Scale Optimization), οι μέθοδοι CG είναι συχνά η μόνη εφικτή επιλογή, παρόλο που συγκλίνουν συνήθως πιο αργά (σε αριθμό βημάτων) από τις Quasi-Newton.
+
+\section*{ΜΕΡΟΣ II (Εφαρμογές/ Υλοποίηση: Μη γραμμικά Συστήματα και Βελτιστοποίηση)}
+
+\section*{Άσκηση 2}
+
+\subsection*{a) Δημιουργία Μη Γραμμικού Συστήματος από Πρόβλημα Βελτιστοποίησης}
+
+\textbf{Εκφώνηση:}
+Να δημιουργήσετε κατάλληλο μη γραμμικό σύστημα τέτοιο ώστε οι ελαχιστοποιητές (minimizers) της συνάρτησης $f(x_1,x_2): \mathbb{R}^2 \rightarrow \mathbb{R}$ να είναι μεταξύ των λύσεων αυτού του συστήματος. Να γίνει εφαρμογή για μία μη γραμμική συνάρτηση που θα επιλέξετε.
+
+\textbf{Απάντηση:}
+
+\textbf{Θεωρητική Προσέγγιση:}
+Για μια διαφορίσιμη συνάρτηση $f: \mathbb{R}^n \rightarrow \mathbb{R}$, μια αναγκαία συνθήκη ώστε ένα σημείο $x^*$ να είναι τοπικός ελαχιστοποιητής (local minimizer) είναι η κλίση της συνάρτησης στο σημείο αυτό να είναι μηδενική (στάσιμο σημείο).
+Συνεπώς, το ζητούμενο μη γραμμικό σύστημα $F(x) = 0$ προκύπτει από τις μερικές παραγώγους της $f$:
+\begin{equation}
+    \nabla f(x) = 0 \implies 
+    \begin{cases}
+        \frac{\partial f}{\partial x_1}(x_1, x_2) = 0 \\
+        \frac{\partial f}{\partial x_2}(x_1, x_2) = 0
+    \end{cases}
+\end{equation}
+Οι λύσεις αυτού του συστήματος περιλαμβάνουν όλα τα στάσιμα σημεία (τοπικά ελάχιστα, τοπικά μέγιστα και σαγματικά σημεία). Άρα, οι ελαχιστοποιητές είναι υποσύνολο των λύσεων του συστήματος.
+
+\textbf{Εφαρμογή σε Μη Γραμμική Συνάρτηση:}
+Επιλέγουμε την εξής μη γραμμική συνάρτηση (τετάρτου βαθμού):
+\begin{equation}
+    f(x_1, x_2) = x_1^4 + x_2^4 - 4x_1 x_2
+\end{equation}
+
+Υπολογίζουμε τις μερικές παραγώγους:
+\begin{itemize}
+    \item $\frac{\partial f}{\partial x_1} = 4x_1^3 - 4x_2$
+    \item $\frac{\partial f}{\partial x_2} = 4x_2^3 - 4x_1$
+\end{itemize}
+
+Το αντίστοιχο \textbf{μη γραμμικό σύστημα} που προκύπτει είναι:
+\begin{equation}
+    \begin{cases}
+        4x_1^3 - 4x_2 = 0 \\
+        4x_2^3 - 4x_1 = 0
+    \end{cases}
+    \iff
+    \begin{cases}
+        x_2 = x_1^3 \\
+        x_1 = x_2^3
+    \end{cases}
+\end{equation}
+
+\textit{Σχόλιο:} Επιλύοντας το σύστημα (αντικαθιστώντας το πρώτο στο δεύτερο: $x_1 = (x_1^3)^3 \Rightarrow x_1 = x_1^9$), βρίσκουμε τις λύσεις $(0,0)$, $(1,1)$ και $(-1,-1)$. Με έλεγχο του πίνακα Hessian, διαπιστώνουμε ότι τα σημεία $(1,1)$ και $(-1,-1)$ είναι ελαχιστοποιητές, ενώ το $(0,0)$ είναι σαγματικό σημείο. Συνεπώς, οι ελαχιστοποιητές βρίσκονται όντως μεταξύ των λύσεων του συστήματος.
+
+\section*{Άσκηση 3}
+
+\subsection*{a) Γραφική Απεικόνιση και Ισοϋψείς Καμπύλες}
+
+\textbf{Εκφώνηση:}
+Δίνεται η συνάρτηση Freudenstein and Roth για $m=n=2$. Να δώσετε χρησιμοποιώντας υπολογιστικό πακέτο τη γραφική απεικόνιση και τις ισοϋψείς της συνάρτησης στο διάστημα $x_1, x_2 \in [-10, 10]$, με πλήρη επεξήγηση.
+
+\textbf{Απάντηση:}
+
+Η συνάρτηση Freudenstein and Roth ορίζεται ως:
+$$ f(x) = f_1(x)^2 + f_2(x)^2 $$
+με:
+$$ f_1(x) = x_1 - x_2(2 - x_2(5 - x_2)) - 13 $$
+$$ f_2(x) = x_1 - x_2(14 - x_2(1 + x_2)) - 29 $$
+
+Χρησιμοποιήθηκε η γλώσσα Python (βιβλιοθήκη Matplotlib) για την παραγωγή των γραφημάτων.
+
+\textbf{1. Τρισδιάστατη Απεικόνιση (3D Surface Plot):}
+Στο Σχήμα \ref{fig:fr_3d} παρουσιάζεται η επιφάνεια της συνάρτησης. Παρατηρούμε ότι η συνάρτηση έχει τη μορφή μιας απότομης "κοιλάδας" (valley). Οι τιμές της αυξάνονται ραγδαία καθώς απομακρυνόμαστε από την περιοχή του ελαχίστου, φτάνοντας σε τιμές της τάξης του $10^5$ στα όρια του διαστήματος $[-10, 10]$.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\textwidth]{freudenstein_3d.png}
+    \caption{Τρισδιάστατη απεικόνιση της συνάρτησης Freudenstein and Roth.}
+    \label{fig:fr_3d}
+\end{figure}
+
+\textbf{2. Ισοϋψείς Καμπύλες (Contour Plot):}
+Στο Σχήμα \ref{fig:fr_contour} παρουσιάζονται οι ισοϋψείς καμπύλες. Λόγω της μεγάλης κλίμακας τιμών, χρησιμοποιήθηκε λογαριθμική κατανομή για τα επίπεδα (levels) των ισοϋψών, ώστε να είναι ευδιάκριτη η τοπολογία κοντά στο ελάχιστο. Η μορφή των καμπυλών επιβεβαιώνει την ύπαρξη μιας στενής, καμπυλωτής κοιλάδας, εντός της οποίας βρίσκεται το ολικό ελάχιστο.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\textwidth]{freudenstein_contour.png}
+    \caption{Ισοϋψείς καμπύλες της συνάρτησης Freudenstein and Roth (λογαριθμική κλίμακα).}
+    \label{fig:fr_contour}
+\end{figure}
+
+\subsection*{b) Εφαρμογή Μίας Επανάληψης και Θεωρητική Ανάλυση}
+
+\textbf{Εκφώνηση:}
+Για την ελαχιστοποίηση της συνάρτησης $f(x)$ να εφαρμόσετε μία (1) επανάληψη των μεθόδων: i. Steepest Descent, ii. Newton, iii. BFGS και iv. Fletcher Reeves, χρησιμοποιώντας ως αρχικό σημείο το $x^{(0)} = (0.5, -2)$ και exact μέθοδο για το μήκος βήματος.
+Σε ποιες περιπτώσεις για τη μέθοδο Fletcher-Reeves ξέρουμε σε πόσες επαναλήψεις θα συγκλίνει και γιατί;
+
+\textbf{Απάντηση:}
+
+\textbf{Υπολογισμός Παραγώγων στο $x^{(0)}$:}
+Στο σημείο $x^{(0)} = (0.5, -2)^T$, υπολογίζουμε την τιμή της συνάρτησης, την κλίση (Gradient) και τον πίνακα Hessian.
+\begin{itemize}
+    \item $f(x^{(0)}) = 400.5$
+    \item $\nabla f(x^{(0)}) = \begin{bmatrix} 30 \\ -1272 \end{bmatrix}$
+    \item $\nabla^2 f(x^{(0)}) = \begin{bmatrix} 4 & -80 \\ -80 & 3332 \end{bmatrix}$
+\end{itemize}
+
+\subsubsection*{i. Steepest Descent, iii. BFGS, iv. Fletcher-Reeves}
+\textit{Παρατήρηση:} Για την πρώτη επανάληψη ($k=0$):
+\begin{itemize}
+    \item Η μέθοδος Steepest Descent χρησιμοποιεί κατεύθυνση $d_0 = -\nabla f(x_0)$.
+    \item Η μέθοδος BFGS, με τυπική αρχικοποίηση $B_0 = I$, δίνει $d_0 = -I \nabla f(x_0) = -\nabla f(x_0)$.
+    \item Η μέθοδος Fletcher-Reeves έχει $\beta_0 = 0$, άρα $d_0 = -\nabla f(x_0) + 0 \cdot d_{-1} = -\nabla f(x_0)$.
+\end{itemize}
+Συνεπώς, και οι τρεις μέθοδοι ακολουθούν την ίδια κατεύθυνση και δίνουν το ίδιο αποτέλεσμα για την 1η επανάληψη.
+
+\textbf{Βήμα 1 (Κοινό):}
+\begin{itemize}
+    \item \textbf{Κατεύθυνση:} $d_0 = -\nabla f(x^{(0)}) = \begin{bmatrix} -30 \\ 1272 \end{bmatrix}$.
+    \item \textbf{Μήκος Βήματος (Exact Line Search):}
+    Ελαχιστοποιούμε τη συνάρτηση $\phi(\alpha) = f(x^{(0)} + \alpha d_0)$.
+    Η βέλτιστη τιμή που βρέθηκε υπολογιστικά είναι $\alpha \approx 0.000425$.
+    \item \textbf{Νέο Σημείο $x^{(1)}$:}
+    $$ x^{(1)} = x^{(0)} + \alpha d_0 = \begin{bmatrix} 0.5 \\ -2 \end{bmatrix} + 0.000425 \begin{bmatrix} -30 \\ 1272 \end{bmatrix} \approx \begin{bmatrix} 0.4872 \\ -1.4592 \end{bmatrix} $$
+    \item \textbf{Νέα Τιμή:} $f(x^{(1)}) \approx 99.41$ (Σημαντική μείωση από 400.5).
+\end{itemize}
+
+\subsubsection*{ii. Μέθοδος Newton}
+Η μέθοδος Newton χρησιμοποιεί πληροφορία δεύτερης παραγώγου.
+
+\textbf{Βήμα 1:}
+\begin{itemize}
+    \item \textbf{Κατεύθυνση:} Λύνουμε το σύστημα $\nabla^2 f(x^{(0)}) d_0 = -\nabla f(x^{(0)})$.
+    $$ \begin{bmatrix} 4 & -80 \\ -80 & 3332 \end{bmatrix} d_0 = \begin{bmatrix} -30 \\ 1272 \end{bmatrix} \implies d_0 \approx \begin{bmatrix} 0.2598 \\ 0.3880 \end{bmatrix} $$
+    \item \textbf{Μήκος Βήματος (Exact Line Search):}
+    Ελαχιστοποιούμε τη $\phi(\alpha) = f(x^{(0)} + \alpha d_0)$.
+    Η βέλτιστη τιμή είναι $\alpha \approx 1.4488$.
+    \item \textbf{Νέο Σημείο $x^{(1)}$:}
+    $$ x^{(1)} = x^{(0)} + \alpha d_0 \approx \begin{bmatrix} 0.5 \\ -2 \end{bmatrix} + 1.4488 \begin{bmatrix} 0.2598 \\ 0.3880 \end{bmatrix} \approx \begin{bmatrix} 0.8764 \\ -1.4379 \end{bmatrix} $$
+    \item \textbf{Νέα Τιμή:} $f(x^{(1)}) \approx 95.69$ (Μεγαλύτερη μείωση από τις Gradient μεθόδους).
+\end{itemize} %
+
+\subsubsection*{Θεωρητικό Ερώτημα: Σύγκλιση Fletcher-Reeves}
+\textbf{Απάντηση:}
+Γνωρίζουμε τον ακριβή αριθμό επαναλήψεων για τη μέθοδο Fletcher-Reeves (και γενικά για μεθόδους συζυγών κλίσεων) όταν η αντικειμενική συνάρτηση $f(x)$ είναι \textbf{αυστηρά κυρτή τετραγωνική συνάρτηση} (strictly convex quadratic function) $n$ μεταβλητών, της μορφής:
+$$ f(x) = \frac{1}{2}x^T Q x + b^T x + c $$
+όπου $Q$ είναι συμμετρικός θετικά ορισμένος πίνακας $n \times n$.
+
+\textbf{Αιτιολόγηση:}
+Στην περίπτωση αυτή, οι κατευθύνσεις που παράγει η μέθοδος είναι \textbf{συζυγείς ως προς τον πίνακα Q} (Q-conjugate directions), δηλαδή ισχύει $d_i^T Q d_j = 0$ για $i \neq j$.
+Θεωρητικά, ελαχιστοποιώντας κατά μήκος διαδοχικών συζυγών κατευθύνσεων, η μέθοδος εγγυάται την εύρεση του ολικού ελαχίστου σε \textbf{το πολύ $n$ επαναλήψεις} (όπου $n$ η διάσταση του προβλήματος), υποθέτοντας ακριβή αριθμητική (χωρίς σφάλματα στρογγυλοποίησης) \cite{nocedal}.
+\end{itemize}
+
+\subsection*{c) Υλοποίηση Κώδικα και Συγκριτική Μελέτη}
+
+\textbf{Εκφώνηση:}
+Για την επίλυση του προβλήματος ελαχιστοποίησης της δοθείσας συνάρτησης $f(x)$ να δημιουργήσετε κώδικα χρησιμοποιώντας τις μεθόδους Steepest Descent και Fletcher-Reeves, παίρνοντας ως αρχικό σημείο $x^{(0)} = (0.5, -2)$, συνθήκη Armijo με υποδιπλασιασμό βήματος και ακρίβεια $eps = 10^{-8}$. Να καταγράψετε και να σχολιάσετε τα αποτελέσματα. Στη συνέχεια να δημιουργήσετε έναν πίνακα σύγκρισης με 10 διαφορετικές αρχικές τιμές.
+
+\textbf{Απάντηση:}
+
+\textbf{1. Υλοποίηση και Μεθοδολογία:}
+Υλοποιήθηκαν οι αλγόριθμοι Steepest Descent (SD) και Fletcher-Reeves (FR) σε γλώσσα Python.
+\begin{itemize}
+    \item \textbf{Line Search:} Χρησιμοποιήθηκε η συνθήκη Armijo (Sufficient Decrease) με αρχικό βήμα $\alpha=1$ και παράγοντα μείωσης $\beta=0.5$ (backtracking).
+    \item \textbf{Κριτήριο Τερματισμού:} $\|\nabla f(x_k)\| < 10^{-8}$ ή μέγιστος αριθμός επαναλήψεων $MaxIter=5000$.
+\end{itemize}
+
+\textbf{2. Αποτελέσματα για $x^{(0)} = (0.5, -2)$:}
+\begin{itemize}
+    \item \textbf{Steepest Descent:} Η μέθοδος δεν κατάφερε να συγκλίνει εντός 5000 επαναλήψεων. Παγιδεύτηκε σε αργή κάθοδο (zig-zag) μέσα στην κοιλάδα της συνάρτησης.
+    \begin{itemize}
+        \item Τελική τιμή $f(x)$: $\approx 3.9 \times 10^{-9}$ (κοντά στο ελάχιστο αλλά πολύ αργή πρόοδος).
+        \item Χρόνος: 0.29 sec.
+    \end{itemize}
+    \item \textbf{Fletcher-Reeves:} Η μέθοδος επίσης δυσκολεύτηκε με τη συγκεκριμένη αρχική τιμή και τη συνθήκη Armijo, καταλήγοντας σε ένα τοπικό στάσιμο σημείο με τιμή $f \approx 48.98$.
+\end{itemize}
+
+\textbf{3. Συγκριτικός Πίνακας (10 Αρχικά Σημεία):}
+Στον παρακάτω πίνακα παρουσιάζονται τα αποτελέσματα για 10 διαφορετικά αρχικά σημεία.
+(IT: Επαναλήψεις, FE: Υπολογισμοί Συνάρτησης, Time: Χρόνος σε δευτερόλεπτα).
+
+\begin{table}[H]
+\centering
+\begin{tabular}{|c|c|c|c|c|c|c|}
+\hline
+\textbf{Αρχικό Σημείο} & \multicolumn{3}{c|}{\textbf{Steepest Descent (SD)}} & \multicolumn{3}{c|}{\textbf{Fletcher-Reeves (FR)}} \\ \hline
+$(x_1, x_2)$ & IT & FE & Time (s) & IT & FE & Time (s) \\ \hline
+$(0.5, -2.0)$ & 5000* & 15000 & 0.29 & 5000* & 15000 & 0.26 \\ \hline
+$(-1.2, 1.0)$ & 5000* & 15000 & 0.27 & 5000* & 15000 & 0.26 \\ \hline
+$(4.0, 3.0)$ & 5000* & 15000 & 0.26 & \textbf{2298} & 6894 & \textbf{0.13} \\ \hline
+$(-5.0, -5.0)$ & 5000* & 15000 & 0.50 & \textbf{2954} & 8862 & \textbf{0.36} \\ \hline
+$(2.0, 2.0)$ & 5000* & 15000 & 0.40 & \textbf{893} & 2679 & \textbf{0.21} \\ \hline
+$(-3.0, 3.0)$ & 5000* & 15000 & 0.51 & \textbf{3376} & 10128 & \textbf{0.38} \\ \hline
+$(1.0, -1.0)$ & 5000* & 15000 & 0.46 & 3959 & 11877 & 0.21 \\ \hline
+$(0.0, 0.0)$ & 5000* & 15000 & 0.26 & 4097 & 12291 & 0.21 \\ \hline
+$(-2.0, -2.0)$ & 5000* & 15000 & 0.26 & 5000* & 15000 & 0.26 \\ \hline
+$(3.0, -3.0)$ & 5000* & 15000 & 0.26 & 5000* & 15000 & 0.26 \\ \hline
+\end{tabular}
+\caption{Σύγκριση SD και FR. Με (*) σημειώνονται οι περιπτώσεις που έφτασαν το όριο των 5000 επαναλήψεων χωρίς να ικανοποιηθεί το κριτήριο τερματισμού.}
+\end{table}
+
+\textbf{4. Σχολιασμός και Συμπεράσματα:}
+\begin{itemize}
+    \item \textbf{Steepest Descent:} Η μέθοδος απέτυχε να συγκλίνει εντός του ορίου επαναλήψεων σε όλες τις δοκιμές. Αυτό επιβεβαιώνει τη θεωρία ότι η SD είναι εξαιρετικά αναποτελεσματική σε προβλήματα με στενές κοιλάδες (ill-conditioned problems) όπως η συνάρτηση Freudenstein-Roth, λόγω του φαινομένου zig-zag.
+    \item \textbf{Fletcher-Reeves:} Η μέθοδος επέδειξε μικτή συμπεριφορά.
+    \begin{itemize}
+        \item Σε αρκετές περιπτώσεις (π.χ. $(2,2), (4,3)$) κατάφερε να συγκλίνει στο ολικό ελάχιστο πολύ ταχύτερα από την SD.
+        \item Σε άλλες περιπτώσεις, η απόδοσή της επηρεάστηκε αρνητικά από τη χρήση της απλής συνθήκης Armijo. Οι μέθοδοι Συζυγών Κλίσεων απαιτούν συνήθως ισχυρότερες συνθήκες Line Search (Strong Wolfe) για να διατηρήσουν την ιδιότητα της συζυγίας. Η ανακριβής Line Search οδηγεί σε απώλεια της συζυγίας και μετατρέπει τη μέθοδο ουσιαστικά σε Steepest Descent.
+    \end{itemize}
+    \item \textbf{Συνολικά:} Η FR υπερτερεί σαφώς της SD όταν οι συνθήκες είναι ευνοϊκές, αλλά για δύσκολα προβλήματα απαιτεί πιο προσεκτική επιλογή της στρατηγικής Line Search.
+\end{itemize}
+
+% --- Βιβλιογραφία ---
+\begin{thebibliography}{9}
+
+% Όταν κάνεις \cite{goodfellow}, θα εμφανίζει: [Goodfellow et al., Deep Learning, 2016]
+\bibitem[Goodfellow et al., \textit{Deep Learning}, 2016]{goodfellow}
+I. Goodfellow, Y. Bengio, and A. Courville, \textit{Deep Learning}. MIT Press, 2016.
+
+% Όταν κάνεις \cite{momoh}, θα εμφανίζει: [Momoh et al., A review of selected OPF..., 1999]
+\bibitem[Momoh et al., \textit{A review of selected OPF literature}, 1999]{momoh}
+J. A. Momoh et al., "A review of selected optimal power flow literature to 1993," \textit{IEEE Trans. Power Syst.}, vol. 14, no. 1, 1999.
+
+% Όταν κάνεις \cite{bertsimas}, θα εμφανίζει: [Bertsimas & Tsitsiklis, Intro to Linear Optimization, 1997]
+\bibitem[Bertsimas \& Tsitsiklis, \textit{Intro to Linear Optimization}, 1997]{bertsimas}
+D. Bertsimas and J. N. Tsitsiklis, \textit{Introduction to Linear Optimization}. Athena Scientific, 1997.
+
+% Όταν κάνεις \cite{nocedal}, θα εμφανίζει: [Nocedal & Wright, Numerical Optimization, 2006]
+\bibitem[Nocedal \& Wright, \textit{Numerical Optimization}, 2006]{nocedal}
+J. Nocedal and S. J. Wright, \textit{Numerical Optimization}, 2nd ed. Springer, 2006.
+
+\bibitem[Bertsekas, \textit{Nonlinear Programming}, 1999]{bertsekas}
+D. P. Bertsekas, \textit{Nonlinear Programming}, 2nd ed. Athena Scientific, 1999.
+
+\end{thebibliography}
+
+\newpage
+\section*{Παράρτημα: Κώδικας Python για Σχήματα}
+
+\subsection*{Κώδικας 1: Διάγραμμα Συνθήκης Armijo (Άσκηση 1c)}
+\begin{lstlisting}[language=Python]
+import matplotlib.pyplot as plt
+import numpy as np
+
+# Ορισμός συναρτήσεων
+def phi(alpha):
+    return (alpha - 1)**2 + 1  # Μια απλή κυρτή συνάρτηση
+
+def l_armijo(alpha, f0, slope, c1):
+    return f0 + c1 * slope * alpha
+
+# Παράμετροι
+alpha_vals = np.linspace(0, 2.5, 100)
+f0 = phi(0)
+slope = -2 # Παράγωγος της (alpha-1)^2 + 1 στο alpha=0
+c1 = 0.15
+
+# Σχεδίαση
+plt.figure(figsize=(8, 5))
+
+# Καμπύλη φ(α)
+plt.plot(alpha_vals, phi(alpha_vals), label=r'$\phi(\alpha)$', linewidth=2, color='black')
+
+# Ευθεία Armijo
+armijo_vals = l_armijo(alpha_vals, f0, slope, c1)
+plt.plot(alpha_vals, armijo_vals, '-.', label='Armijo Line', color='red', linewidth=2)
+
+# Εφαπτόμενη (για αναφορά)
+plt.plot(alpha_vals, f0 + slope*alpha_vals, '--', color='gray', alpha=0.5, label=r'Tangent $\phi(0) + \alpha \phi^\prime(0)$')
+
+# Εύρεση του σημείου τομής (όριο αποδεκτών τιμών)
+# Η συνθήκη ικανοποιείται όσο η μαύρη γραμμή είναι ΚΑΤΩ από την κόκκινη
+diff = armijo_vals - phi(alpha_vals)
+# Βρίσκουμε το τελευταίο σημείο όπου diff >= 0
+valid_indices = np.where(diff >= 0)[0]
+
+if len(valid_indices) > 0:
+    limit_alpha = alpha_vals[valid_indices[-1]]
+    
+    # Σχεδίαση της πράσινης περιοχής (Acceptable Step Lengths)
+    plt.axvspan(0, limit_alpha, color='green', alpha=0.3, hatch='//', label='Acceptable Step Lengths')
+    
+    # Προσθήκη κειμένου για την περιοχή
+    plt.text(limit_alpha/2, 0.5, 'Admissible $\\alpha$', color='green', 
+             ha='center', fontweight='bold')
+
+plt.xlabel(r'Step length $\alpha$', fontsize=12)
+plt.ylabel(r'$f(x_k + \alpha p_k)$', fontsize=12)
+plt.title('Armijo Condition (Sufficient Decrease)', fontsize=14)
+plt.legend(loc='upper right', framealpha=0.9)
+plt.grid(True, linestyle=':', alpha=0.6)
+plt.ylim(0, 3) # Ρύθμιση ορίων y για καλύτερη εστίαση
+plt.xlim(0, 2.2)
+
+plt.tight_layout()
+plt.savefig('armijo_plot.png', dpi=300)
+plt.show()
+\end{lstlisting}
+
+\subsection*{Κώδικας 2: Διάγραμμα Κατευθύνσεων Καθόδου (Άσκηση 1d)}
+\begin{lstlisting}[language=Python]
+import matplotlib.pyplot as plt
+import numpy as np
+
+# Ορισμός τετραγωνικής συνάρτησης για ισοσταθμικές
+def f(x, y):
+    return x**2 + 2*y**2
+
+# Πλέγμα
+x = np.linspace(-2, 2, 100)
+y = np.linspace(-1.5, 1.5, 100)
+X, Y = np.meshgrid(x, y)
+Z = f(X, Y)
+
+# Σημείο αξιολόγησης
+x0, y0 = 1.0, 0.5
+grad_x, grad_y = 2*x0, 4*y0  # Κλίση στο (1, 0.5)
+
+plt.figure(figsize=(7, 6))
+
+# Ισοσταθμικές καμπύλες
+plt.contour(X, Y, Z, levels=10, cmap='viridis', alpha=0.6)
+
+# Διάνυσμα Κλίσης (Gradient)
+plt.quiver(x0, y0, grad_x, grad_y, angles='xy', scale_units='xy', scale=1, color='red', label=r'Gradient $g_k$', width=0.015)
+
+# Διάνυσμα Steepest Descent
+plt.quiver(x0, y0, -grad_x, -grad_y, angles='xy', scale_units='xy', scale=1, color='blue', label=r'Steepest Descent $d_k$', width=0.015)
+
+# Τυχαία κατεύθυνση καθόδου
+d_gen_x, d_gen_y = -1.5, 0.5 
+plt.quiver(x0, y0, d_gen_x, d_gen_y, angles='xy', scale_units='xy', scale=1, color='green', label=r'Generic Descent', width=0.01)
+
+# Εφαπτόμενο επίπεδο (κάθετο στην κλίση)
+x_line = np.linspace(0, 2, 10)
+y_line = -x_line + 1.5
+plt.plot(x_line, y_line, 'k:', linewidth=1.5, label='Tangent Plane')
+
+plt.title('Descent Directions & Steepest Descent')
+plt.legend(loc='upper left')
+plt.grid(True, linestyle=':', alpha=0.6)
+plt.axis('equal')
+plt.savefig('descent_direction.png', dpi=300)
+\end{lstlisting}
+\subsection*{Κώδικας 3: Γραφική Απεικόνιση Freudenstein-Roth (Άσκηση 3a)}
+\begin{lstlisting}[language=Python]
+import matplotlib.pyplot as plt
+import numpy as np
+from matplotlib import cm
+
+# Ορισμός συνάρτησης Freudenstein and Roth
+def f1(x1, x2):
+    return x1 - x2 * (2 - x2 * (5 - x2)) - 13
+
+def f2(x1, x2):
+    return x1 - x2 * (14 - x2 * (1 + x2)) - 29
+
+def f(x1, x2):
+    return f1(x1, x2)**2 + f2(x1, x2)**2
+
+# Δημιουργία πλέγματος
+x = np.linspace(-10, 10, 100)
+y = np.linspace(-10, 10, 100)
+X, Y = np.meshgrid(x, y)
+Z = f(X, Y)
+
+# 3D Plot
+fig = plt.figure(figsize=(10, 7))
+ax = fig.add_subplot(111, projection='3d')
+surf = ax.plot_surface(X, Y, Z, cmap=cm.viridis, linewidth=0, antialiased=False, alpha=0.8)
+ax.set_xlabel('$x_1$')
+ax.set_ylabel('$x_2$')
+ax.set_zlabel('$f(x)$')
+plt.savefig('freudenstein_3d.png', dpi=300)
+
+# Contour Plot
+plt.figure(figsize=(8, 7))
+levels = np.logspace(0, 5, 20) # Λογαριθμική κλίμακα
+cp = plt.contour(X, Y, Z, levels=levels, cmap='viridis')
+plt.colorbar(cp, label='$f(x)$ value')
+plt.xlabel('$x_1$')
+plt.ylabel('$x_2$')
+plt.grid(True, linestyle=':', alpha=0.6)
+plt.savefig('freudenstein_contour.png', dpi=300)
+\end{lstlisting}
+
+\subsection*{Κώδικας 4: Υπολογισμοί 1ης Επανάληψης (Άσκηση 3b)}
+\begin{lstlisting}[language=Python]
+import numpy as np
+from scipy.optimize import minimize_scalar
+
+# Ορισμός συνάρτησης και συνιστωσών
+def f1(x):
+    return x[0] - x[1] * (2 - x[1] * (5 - x[1])) - 13
+def f2(x):
+    return x[0] - x[1] * (14 - x[1] * (1 + x[1])) - 29
+def f(x):
+    return f1(x)**2 + f2(x)**2
+
+# Υπολογισμός Ιακωβιανού πίνακα F(x)
+def jacobian_F(x):
+    df1_dx1 = 1.0
+    df1_dx2 = -2 + 10*x[1] - 3*x[1]**2
+    df2_dx1 = 1.0
+    df2_dx2 = -14 + 2*x[1] + 3*x[1]**2
+    return np.array([[df1_dx1, df1_dx2], [df2_dx1, df2_dx2]])
+
+# Υπολογισμός Κλίσης (Gradient)
+def gradient_f(x):
+    J = jacobian_F(x)
+    F_val = np.array([f1(x), f2(x)])
+    return 2 * np.dot(J.T, F_val)
+
+# Υπολογισμός Hessian (Πλήρης)
+def hessian_f(x):
+    J = jacobian_F(x)
+    F_val = np.array([f1(x), f2(x)])
+    H1 = np.array([[0, 0], [0, 10 - 6*x[1]]])
+    H2 = np.array([[0, 0], [0, 2 + 6*x[1]]])
+    return 2 * np.dot(J.T, J) + 2 * F_val[0] * H1 + 2 * F_val[1] * H2
+
+# Αρχικό σημείο
+x0 = np.array([0.5, -2.0])
+g0 = gradient_f(x0)
+H0 = hessian_f(x0)
+
+# --- 1. Steepest Descent / BFGS / FR ---
+d_sd = -g0
+# Exact Line Search
+res_sd = minimize_scalar(lambda alpha: f(x0 + alpha * d_sd))
+x1_sd = x0 + res_sd.x * d_sd
+print(f"SD/BFGS/FR: x1 = {x1_sd}, f(x1) = {f(x1_sd)}")
+
+# --- 2. Newton ---
+d_newton = np.linalg.solve(H0, -g0)
+# Exact Line Search
+res_newton = minimize_scalar(lambda alpha: f(x0 + alpha * d_newton))
+x1_newton = x0 + res_newton.x * d_newton
+print(f"Newton: x1 = {x1_newton}, f(x1) = {f(x1_newton)}")
+\end{lstlisting}
+
+\subsection*{Κώδικας 5: Υλοποίηση SD και FR με Armijo (Άσκηση 3c)}
+\begin{lstlisting}[language=Python]
+import numpy as np
+import time
+
+# Ορισμός Συνάρτησης και Κλίσης
+def f1(x): return x[0] - x[1] * (2 - x[1] * (5 - x[1])) - 13
+def f2(x): return x[0] - x[1] * (14 - x[1] * (1 + x[1])) - 29
+def f(x): return f1(x)**2 + f2(x)**2
+
+def gradient_f(x):
+    df1_dx1 = 1.0
+    df1_dx2 = -2 + 10*x[1] - 3*x[1]**2
+    df2_dx1 = 1.0
+    df2_dx2 = -14 + 2*x[1] + 3*x[1]**2
+    g1 = 2 * f1(x) * df1_dx1 + 2 * f2(x) * df2_dx1
+    g2 = 2 * f1(x) * df1_dx2 + 2 * f2(x) * df2_dx2
+    return np.array([g1, g2])
+
+# Line Search (Armijo)
+def line_search_armijo(x, d, g, f_val):
+    alpha = 1.0
+    c1 = 1e-4
+    beta = 0.5
+    while True:
+        x_new = x + alpha * d
+        if f(x_new) <= f_val + c1 * alpha * np.dot(g, d):
+            return alpha, x_new, f(x_new)
+        alpha *= beta
+        if alpha < 1e-16: return alpha, x, f_val # Safety break
+
+# Steepest Descent
+def steepest_descent(x0, tol=1e-8, max_iter=5000):
+    x = np.array(x0)
+    start = time.time()
+    for k in range(max_iter):
+        g = gradient_f(x)
+        if np.linalg.norm(g) < tol: break
+        alpha, x, f_val = line_search_armijo(x, -g, g, f(x))
+    return k, time.time() - start
+
+# Fletcher-Reeves
+def fletcher_reeves(x0, tol=1e-8, max_iter=5000):
+    x = np.array(x0)
+    g = gradient_f(x)
+    d = -g
+    start = time.time()
+    for k in range(max_iter):
+        if np.linalg.norm(g) < tol: break
+        alpha, x_new, f_new = line_search_armijo(x, d, g, f(x))
+        g_new = gradient_f(x_new)
+        beta = np.dot(g_new, g_new) / (np.dot(g, g) + 1e-10)
+        d = -g_new + beta * d
+        x, g = x_new, g_new
+    return k, time.time() - start
+\end{lstlisting}
+
+\end{document}

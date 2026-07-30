@@ -1,0 +1,5 @@
+method,setting,n_features,selected_features,MAE,MSE,RMSE,R2
+MutualInformation,top_11,11,"alcohol, volatile acidity, sulphates, citric acid, density, chlorides, total sulfur dioxide, fixed acidity, free sulfur dioxide, pH, residual sugar",0.5035304415524374,0.3900251439639549,0.6245199307980129,0.403180341279622
+RFE,top_11,11,"fixed acidity, volatile acidity, citric acid, residual sugar, chlorides, free sulfur dioxide, total sulfur dioxide, density, pH, sulphates, alcohol",0.5035304415524374,0.39002514396395493,0.624519930798013,0.4031803412796219
+LassoEmbedded,alpha_0.001,11,"fixed acidity, volatile acidity, citric acid, residual sugar, chlorides, free sulfur dioxide, total sulfur dioxide, density, pH, sulphates, alcohol",0.5035304415524374,0.39002514396395493,0.624519930798013,0.4031803412796219
+Pearson,top_11,11,"alcohol, volatile acidity, sulphates, citric acid, total sulfur dioxide, density, chlorides, fixed acidity, free sulfur dioxide, pH, residual sugar",0.5035304415524375,0.39002514396395493,0.624519930798013,0.4031803412796219

@@ -1,0 +1,32 @@
+method,setting,n_features,selected_features,MAE,MSE,RMSE,R2
+MutualInformation,top_11,11,"alcohol, volatile acidity, sulphates, citric acid, density, chlorides, total sulfur dioxide, fixed acidity, free sulfur dioxide, pH, residual sugar",0.5035304415524374,0.3900251439639549,0.6245199307980129,0.403180341279622
+RFE,top_11,11,"fixed acidity, volatile acidity, citric acid, residual sugar, chlorides, free sulfur dioxide, total sulfur dioxide, density, pH, sulphates, alcohol",0.5035304415524374,0.39002514396395493,0.624519930798013,0.4031803412796219
+LassoEmbedded,alpha_0.001,11,"fixed acidity, volatile acidity, citric acid, residual sugar, chlorides, free sulfur dioxide, total sulfur dioxide, density, pH, sulphates, alcohol",0.5035304415524374,0.39002514396395493,0.624519930798013,0.4031803412796219
+Pearson,top_11,11,"alcohol, volatile acidity, sulphates, citric acid, total sulfur dioxide, density, chlorides, fixed acidity, free sulfur dioxide, pH, residual sugar",0.5035304415524375,0.39002514396395493,0.624519930798013,0.4031803412796219
+RFE,top_6,6,"volatile acidity, chlorides, total sulfur dioxide, pH, sulphates, alcohol",0.5044141874926312,0.39009142544994474,0.6245729944929934,0.40307891680876373
+RFE,top_8,8,"volatile acidity, citric acid, chlorides, free sulfur dioxide, total sulfur dioxide, pH, sulphates, alcohol",0.5040190642742824,0.39044756182090923,0.6248580333330997,0.4025339540270909
+RFE,top_9,9,"fixed acidity, volatile acidity, citric acid, chlorides, free sulfur dioxide, total sulfur dioxide, pH, sulphates, alcohol",0.5039573520670297,0.390845056375663,0.6251760203140097,0.40192570461501387
+RFE,top_10,10,"fixed acidity, volatile acidity, citric acid, chlorides, free sulfur dioxide, total sulfur dioxide, density, pH, sulphates, alcohol",0.5040876719443239,0.39085815725890294,0.6251864979819245,0.4019056575365493
+Pearson,top_10,10,"alcohol, volatile acidity, sulphates, citric acid, total sulfur dioxide, density, chlorides, fixed acidity, free sulfur dioxide, pH",0.5040876719443239,0.39085815725890305,0.6251864979819246,0.40190565753654917
+MutualInformation,top_10,10,"alcohol, volatile acidity, sulphates, citric acid, density, chlorides, total sulfur dioxide, fixed acidity, free sulfur dioxide, pH",0.5040876719443239,0.39085815725890305,0.6251864979819246,0.40190565753654917
+RFE,top_7,7,"volatile acidity, chlorides, free sulfur dioxide, total sulfur dioxide, pH, sulphates, alcohol",0.5042888908468806,0.3912782138290929,0.6255223527813318,0.4012628835442982
+LassoEmbedded,alpha_0.01,8,"fixed acidity, volatile acidity, chlorides, free sulfur dioxide, total sulfur dioxide, pH, sulphates, alcohol",0.5043420184064347,0.391744082268632,0.625894625531033,0.40055000785564765
+Pearson,top_8,8,"alcohol, volatile acidity, sulphates, citric acid, total sulfur dioxide, density, chlorides, fixed acidity",0.5062120061229037,0.39254767260771656,0.6265362500348376,0.3993203473597906
+MutualInformation,top_8,8,"alcohol, volatile acidity, sulphates, citric acid, density, chlorides, total sulfur dioxide, fixed acidity",0.5062120061229037,0.3925476726077165,0.6265362500348376,0.3993203473597906
+Pearson,top_9,9,"alcohol, volatile acidity, sulphates, citric acid, total sulfur dioxide, density, chlorides, fixed acidity, free sulfur dioxide",0.5062071557197267,0.3942961815797263,0.6279300769828805,0.396644764659305
+MutualInformation,top_9,9,"alcohol, volatile acidity, sulphates, citric acid, density, chlorides, total sulfur dioxide, fixed acidity, free sulfur dioxide",0.5062071557197267,0.39429618157972623,0.6279300769828805,0.3966447646593051
+LassoEmbedded,alpha_0.05,6,"fixed acidity, volatile acidity, chlorides, total sulfur dioxide, sulphates, alcohol",0.507032226455764,0.3947349786651653,0.6282793794683742,0.39597331377765765
+RFE,top_5,5,"volatile acidity, chlorides, total sulfur dioxide, sulphates, alcohol",0.5078287886644827,0.3947900999897026,0.6283232448268189,0.3958889666769446
+Pearson,top_7,7,"alcohol, volatile acidity, sulphates, citric acid, total sulfur dioxide, density, chlorides",0.5077464302582635,0.39536419968560865,0.6287799294551383,0.3950104746364064
+MutualInformation,top_7,7,"alcohol, volatile acidity, sulphates, citric acid, density, chlorides, total sulfur dioxide",0.5077464302582637,0.39536419968560876,0.6287799294551384,0.39501047463640615
+MutualInformation,top_6,6,"alcohol, volatile acidity, sulphates, citric acid, density, chlorides",0.5158914392566202,0.3962710325558277,0.6295006215690558,0.39362283157673084
+Pearson,top_5,5,"alcohol, volatile acidity, sulphates, citric acid, total sulfur dioxide",0.5129919014753207,0.3990373788663911,0.6316940547974084,0.3893897458730936
+RFE,top_4,4,"volatile acidity, total sulfur dioxide, sulphates, alcohol",0.5130178680518009,0.3991620021522021,0.631792689220287,0.3891990463039572
+Pearson,top_6,6,"alcohol, volatile acidity, sulphates, citric acid, total sulfur dioxide, density",0.512561641525369,0.3992770222755522,0.6318837094557449,0.3890230415724004
+Pearson,top_4,4,"alcohol, volatile acidity, sulphates, citric acid",0.5198324011665706,0.40021634161714986,0.6326265419796658,0.3875856874490632
+MutualInformation,top_4,4,"alcohol, volatile acidity, sulphates, citric acid",0.5198324011665706,0.40021634161714986,0.6326265419796658,0.3875856874490632
+Pearson,top_3,3,"alcohol, volatile acidity, sulphates",0.519991394386857,0.4005775807750832,0.6329119850145699,0.387032916341121
+MutualInformation,top_3,3,"alcohol, volatile acidity, sulphates",0.519991394386857,0.4005775807750832,0.6329119850145699,0.387032916341121
+RFE,top_3,3,"volatile acidity, sulphates, alcohol",0.519991394386857,0.4005775807750832,0.6329119850145699,0.387032916341121
+LassoEmbedded,alpha_0.1,3,"volatile acidity, sulphates, alcohol",0.519991394386857,0.4005775807750832,0.6329119850145699,0.387032916341121
+MutualInformation,top_5,5,"alcohol, volatile acidity, sulphates, citric acid, density",0.5191041291669348,0.40059680419217897,0.6329271713176635,0.38700350051137755

@@ -1,0 +1,6 @@
+dataset,uci_id,rows,cols_total,feature_cols,target_cols,missing_values_total,duplicate_rows_exact,target_names
+Bike Sharing,275,17379,14,13,1,0,0,cnt
+Energy Efficiency,242,768,10,8,2,0,0,"Y1, Y2"
+Wine Quality,186,6497,12,11,1,0,1179,quality
+Air Quality,360,9357,15,15,0,0,0,
+Real Estate Valuation,477,414,7,6,1,0,0,Y house price of unit area

@@ -1,0 +1,17 @@
+# Normalise line endings so the repository is identical on every platform.
+* text=auto eol=lf
+
+# Binary formats: never touch these, and do not try to diff them as text.
+*.pdf binary
+*.pptx binary
+*.xlsx binary
+*.twbx binary
+*.png binary
+*.ipynb -text
+
+# Notebooks and CSV results are generated artefacts; keep them out of the
+# language statistics so the repository reports the languages actually
+# written by hand.
+*.ipynb linguist-documentation
+results/*.csv linguist-generated
+data/*.csv linguist-generated

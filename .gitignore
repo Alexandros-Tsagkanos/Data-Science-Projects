@@ -1,0 +1,37 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.ipynb_checkpoints/
+.venv/
+venv/
+
+# R
+.Rhistory
+.RData
+.Rproj.user/
+*.Rproj
+
+# LaTeX build products (the compiled PDFs are committed on purpose;
+# everything else regenerates)
+*.aux
+*.log
+*.out
+*.toc
+*.synctex.gz
+*.fls
+*.fdb_latexmk
+*.bbl
+*.blg
+
+# Tableau working files
+*.twb.bak
+*.hyper.lock
+
+# Editor / OS noise
+.vscode/
+.idea/
+desktop.ini
+.DS_Store
+Thumbs.db
+*.swp

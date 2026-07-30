@@ -1,0 +1,2170 @@
+---
+title: "Project: Αριθμητικές Μέθοδοι στην Επιστήμη των Δεδομένων"
+subtitle: "Κλασική και Διαστηματική Ανάλυση Χρηματιστηριακών Αποδόσεων (DIA ETF και 15 μετοχές)"
+author: "Alexandros Tsagkanos — ΑΜ: up1125886"
+date: "`r format(Sys.Date(), '%d %B %Y')`"
+output:
+  pdf_document:
+    toc: true
+    toc_depth: 3
+    number_sections: true
+    latex_engine: xelatex
+    fig_width: 7
+    fig_height: 4.3
+    fig_caption: true
+    highlight: tango
+fontsize: 11pt
+mainfont: "Times New Roman"
+monofont: "Consolas"
+geometry: "margin=2.4cm"
+bibliography: refs.bib
+link-citations: true
+nocite: |
+  @kutner2005, @rosseel2012, @cronbach1951, @white1980, @neweywest1987,
+  @kunsch1989, @androulakis2026
+header-includes: |
+  \usepackage{fvextra}
+  \DefineVerbatimEnvironment{Highlighting}{Verbatim}{breaklines,breakanywhere,commandchars=\\\{\},fontsize=\footnotesize}
+  \DefineVerbatimEnvironment{verbatim}{Verbatim}{breaklines,breakanywhere,fontsize=\footnotesize}
+  \usepackage{float}
+  \setcounter{secnumdepth}{3}
+---
+
+```{r setup, include=FALSE}
+# knitr defaults για όλο το report. cairo_pdf: διανυσματικά γραφήματα που
+# αποδίδουν σωστά τα ελληνικά. width=80 ώστε τα summary() να χωράνε στη σελίδα.
+knitr::opts_chunk$set(
+  echo = TRUE, message = FALSE, warning = FALSE, comment = "",
+  fig.align = "center", fig.pos = "H", out.width = "100%",
+  dev = "cairo_pdf", dpi = 150
+)
+options(width = 80)
+
+# Αν λείπει κάποιο πακέτο ή το LaTeX, το εγκαθιστούμε μία φορά (αλλιώς no-op).
+# Έτσι το report χτίζεται και σε καθαρό μηχάνημα / RStudio.
+.req <- c("quantmod", "psych", "corrplot", "ggplot2", "lavaan", "knitr",
+          "car", "moments", "MASS", "kableExtra", "gvlma", "rpart", "rpart.plot",
+          "GPArotation", "lmtest", "sandwich", "nnls", "tseries",
+          "rmarkdown", "tinytex")
+.missing <- .req[!vapply(.req, requireNamespace, logical(1), quietly = TRUE)]
+if (length(.missing) > 0)
+  install.packages(.missing, repos = "https://cloud.r-project.org")
+if (!nzchar(Sys.which("xelatex")) && !nzchar(Sys.which("pdflatex")) &&
+    !tinytex::is_tinytex())
+  tinytex::install_tinytex()
+```
+
+# Περίληψη {-}
+
+Η εργασία συγκρίνει την κλασική στατιστική ανάλυση (αποδόσεις Close-to-Close) με τη
+**διαστηματική ανάλυση δεδομένων** (ημερήσια διαστήματα [Low, High], αναπαράσταση mid/rad)
+για τη σχέση του ETF **DIA** (Dow Jones Industrial Average) με 15 μετοχές από 5 κλάδους του
+S&P 500, σε 1.253 ευθυγραμμισμένες ημερήσιες παρατηρήσεις της περιόδου 2021–2025. Η κλασική
+stepwise παλινδρόμηση εξηγεί το 88.4% της διακύμανσης του DIA και το μοντέλο των κέντρων
+(CRM) το 84.6% — σχεδόν ταυτόσημη εικόνα, όπως αναμένεται θεωρητικά. Η εξίσωση του εύρους
+(rad) εμφανίζει $R^2$ = 0.79, το οποίο όμως τεκμηριώνεται ότι είναι κατά κύριο λόγο
+**μηχανικό αποτέλεσμα άθροισης** (το 0.72 προκύπτει από τον απλό μέσο όρο των επιμέρους
+rad) με στατιστικά άκυρη OLS συμπερασματολογία λόγω αυτοσυσχέτισης· το ορθό συμπέρασμα
+είναι η ύπαρξη ισχυρού **κοινού παράγοντα ενδοημερήσιας αστάθειας**, μη παρατηρήσιμου από
+την κλασική ανάλυση. Η ανάλυση συμπληρώνεται με παραγοντική ανάλυση, PCA, SEM, εύρωστη
+(HC3/HAC) συμπερασματολογία, περιορισμένη CRM (CCRM), έλεγχο εκτός δείγματος και πλήρως
+αναπαραγώγιμο pipeline.
+
+**Abstract.** We compare classical (close-to-close) and interval-valued (daily [Low, High],
+mid/rad representation) statistical analysis of the relation between the DIA ETF and 15
+S&P 500 stocks across five sectors, over 1,253 aligned trading days (2021–2025). Classical
+stepwise regression explains 88.4% of DIA variance and the interval Centre-and-Range
+Method (CRM, centre equation) 84.6%.
+The range (rad) equation attains $R^2$ = 0.79, which we show is largely a mechanical
+aggregation effect (0.72 from the constituent mean alone) with OLS inference invalidated
+by autocorrelation; the substantive finding is a strong common intraday-volatility factor
+invisible to close-to-close analysis. Robust (HC3/HAC) inference, constrained CRM,
+out-of-sample checks and a fully reproducible pipeline complete the study.
+
+**Λέξεις-κλειδιά:** διαστηματικά δεδομένα· συμβολική ανάλυση δεδομένων· Center-and-Range
+Method· αποδόσεις μετοχών· ενδοημερήσια αστάθεια· εύρωστη συμπερασματολογία.
+
+**Συνεισφορές:** (α) συγκριτικό πλαίσιο κλασικής–διαστηματικής παλινδρόμησης στο ίδιο
+panel με κοινή προεπεξεργασία· (β) πλήρης αξιολόγηση διαστηματικής πρόβλεψης (CRM και
+CCRM με μετρικές κάλυψης/αποδοτικότητας/εγκυρότητας)· (γ) ειλικρινής ερμηνεία του rad
+μέσω αποσύνθεσης του μηχανικού μέρους (ταυτότητα άθροισης) και εύρωστης
+συμπερασματολογίας· (δ) πλήρως αναπαραγώγιμο pipeline (σπόρος = ΑΜ, τοπικό στιγμιότυπο
+δεδομένων, αυτόματη εγκατάσταση εξαρτήσεων).
+
+*Σημείωση: οι αριθμοί της περίληψης είναι στατικοί· υπολογίζονται και τεκμηριώνονται
+δυναμικά στις αντίστοιχες ενότητες (ντετερμινιστικό pipeline: σταθερό seed + τοπικά CSV).*
+
+# Εισαγωγή και Στόχος της Εργασίας
+
+Η παρούσα εργασία εκπονείται στο πλαίσιο του μαθήματος *«Αριθμητικές Μέθοδοι στην
+Επιστήμη των Δεδομένων»* και αποσκοπεί στη **συγκριτική μελέτη της κλασικής
+στατιστικής ανάλυσης** (όπου κάθε ημερήσια παρατήρηση είναι ένας πραγματικός αριθμός
+— η απόδοση Close-to-Close) **έναντι της διαστηματικής (interval) ανάλυσης δεδομένων**
+(όπου κάθε παρατήρηση είναι ένα διάστημα [Low, High] και αναπαρίσταται από το ζεύγος
+*mid* και *rad*).
+
+Ως **εξαρτημένη μεταβλητή Y** χρησιμοποιείται ο δείκτης **DIA** (SPDR Dow Jones
+Industrial Average ETF) και ως **ανεξάρτητες μεταβλητές X₁,…,X₁₅** έχουν επιλεγεί
+δεκαπέντε μετοχές κατανεμημένες σε πέντε τομείς της αμερικανικής αγοράς:
+
+| Τομέας (Sector ETF) | Μετοχές |
+|---|---|
+| Technology (XLK)              | NVDA, AAPL, MSFT |
+| Financials (XLF)              | BAC, JPM, V      |
+| Communications (XLC)          | GOOGL, META, NFLX|
+| Consumer Discretionary (XLY)  | AMZN, TSLA, HD   |
+| Health (XLV)                  | LLY, JNJ, UNH    |
+
+Η μελέτη καλύπτει την περίοδο **01-01-2021 έως 31-12-2025** (πέντε ολόκληρα ημερολογιακά
+έτη)^[Το όρισμα `to` του quantmod λειτουργεί ως αποκλειστικό άκρο, οπότε η τελευταία
+διαπραγματεύσιμη ημέρα του δείγματος είναι η 30/12/2025. Το panel ορίζεται από το τοπικό
+στιγμιότυπο CSV στον φάκελο `data/` (n = 1253 αποδόσεις), ώστε ο αριθμός παρατηρήσεων να
+μην εξαρτάται από ενδεχόμενη εκ νέου λήψη.], παρέχοντας περισσότερες από 1.250
+ευθυγραμμισμένες ημερήσιες παρατηρήσεις (ο ακριβής αριθμός υπολογίζεται και αναφέρεται
+παρακάτω). Οι αποδόσεις είναι **price returns** (τιμές κλεισίματος Close, χωρίς
+προσαρμογή μερισμάτων), όπως ακριβώς ορίζει η εκφώνηση (§1.4).
+Το θεωρητικό πλαίσιο για τη διαστηματική παλινδρόμηση ακολουθεί τη **μέθοδο των κέντρων**
+των @billard2000 (για την ακριβή σχέση με τη Center-and-Range Method των Lima Neto &
+de Carvalho, βλ. §B2), ενώ για τη συζήτηση της Interval Factor Analysis βασιζόμαστε
+στην εργασία των @douzal2007.^[Η αναφορά @douzal2007 παρατίθεται όπως ακριβώς δίνεται στη
+βιβλιογραφία της εκφώνησης (στοιχείο 2)· δεν εντοπίστηκε με αυτά τα βιβλιογραφικά στοιχεία
+σε βάσεις δεδομένων. Τα ουσιαστικά σημεία της §B4 στηρίζονται στο επαληθευμένο @douzal2011
+και στους @lauro2000.]
+
+# Σχετική Βιβλιογραφία
+
+Η **συμβολική ανάλυση δεδομένων** (Symbolic Data Analysis) επεκτείνει την κλασική
+στατιστική σε παρατηρήσεις που δεν είναι σημεία αλλά σύνολα — διαστήματα, ιστογράμματα,
+κατανομές. Τα θεμέλια για διαστηματικές μεταβλητές τέθηκαν από τους @bertrand2000
+(περιγραφική στατιστική διαστημάτων) και συστηματοποιήθηκαν από τους @billard2003, οι
+οποίοι τοποθέτησαν το πεδίο ως μετάβαση «από τη στατιστική των δεδομένων στη στατιστική
+της γνώσης». Στην παλινδρόμηση, οι @billard2000 πρότειναν την αρχική **Μέθοδο των Κέντρων**
+(προσαρμογή στο κέντρο του διαστήματος), την οποία οι @limaneto2008 γενίκευσαν στη
+**Center-and-Range Method (CRM)** με χωριστή εξίσωση για το εύρος, και αργότερα
+[@limaneto2010] στην **περιορισμένη CCRM** που εγγυάται μη-αρνητικό προβλεπόμενο εύρος.
+Για τη μείωση διάστασης, η επέκταση της PCA σε διαστηματικά δεδομένα μελετήθηκε από τους
+@douzal2007 και @douzal2011, με τα γνωστά προβλήματα μη-μοναδικότητας της διαστηματικής
+συνδιακύμανσης που καθιστούν την πλήρη Interval FA δυσεπίλυτη (βλ. §B4).
+
+Παράλληλα, στη χρηματοοικονομική βιβλιογραφία το **ημερήσιο εύρος τιμών** έχει μακρά
+ιστορία ως εκτιμητής αστάθειας: ο @parkinson1980 έδειξε ότι το εύρος High–Low παρέχει
+σημαντικά αποδοτικότερη εκτίμηση της διακύμανσης από τις αποδόσεις κλεισίματος, και οι
+@garmanklass1980 τον βελτίωσαν αξιοποιώντας πλήρη OHLC πληροφορία. Η δυναμική της
+δεσμευμένης αστάθειας μοντελοποιείται κλασικά με την οικογένεια ARCH/GARCH
+[@engle1982; @bollerslev1986]. Το Παράρτημα Δ9 γεφυρώνει ρητά τα δύο ρεύματα: δείχνουμε
+ότι το `rad` της διαστηματικής αναπαράστασης ταυτίζεται (ως προς κλίμακα) με τον εκτιμητή
+του Parkinson και συγκρίνεται με τη δεσμευμένη αστάθεια ενός GARCH(1,1).
+
+Η παρούσα εργασία τοποθετείται στην τομή των δύο ρευμάτων: εφαρμόζει το πλαίσιο
+CRM/CCRM σε πραγματικά χρηματιστηριακά διαστήματα [Low, High], αξιολογεί την ποιότητα
+ανακατασκευής των διαστημάτων με τις μετρικές της βιβλιογραφίας (RMSE ορίων, κάλυψη,
+αποδοτικότητα, εγκυρότητα), και ερμηνεύει το αποτέλεσμα του εύρους υπό το πρίσμα της
+βιβλιογραφίας range-based volatility — με εύρωστη συμπερασματολογία [@white1980;
+@neweywest1987] όπου οι κλασικές υποθέσεις παραβιάζονται.
+
+```{r libraries}
+# core πακέτα: δεδομένα, περιγραφικά/FA, γραφήματα, SEM, VIF, πίνακες
+library(quantmod); library(psych); library(corrplot); library(ggplot2)
+library(lavaan); library(knitr); library(car); library(moments)
+library(MASS); library(kableExtra)
+# χρησιμοποιούνται στο Παράρτημα (Δ): δέντρο, robust/HAC SE, CCRM, έλεγχοι χρονοσειράς
+library(gvlma); library(rpart); library(rpart.plot)
+library(lmtest); library(sandwich); library(nnls); library(tseries)
+
+# Μικρός wrapper για τους πίνακες: booktabs + σταθερή θέση. Σε PDF εφαρμόζει
+# kableExtra styling, ενώ διαδραστικά (console) επιστρέφει απλό markdown - αλλιώς
+# η kable(format="latex") θα τύπωνε ωμό LaTeX. wide=TRUE -> μικρότερη γραμματοσειρά
+# (δουλεύει και σε longtables, όπου το scale_down αγνοείται).
+ktab <- function(x, caption = NULL, digits = 3, wide = FALSE, ...) {
+  k <- knitr::kable(x, caption = caption, booktabs = TRUE,
+                    digits = digits, linesep = "", ...)
+  if (knitr::is_latex_output()) {
+    opts <- if (wide) c("HOLD_position", "scale_down") else "HOLD_position"
+    k <- kableExtra::kable_styling(k, latex_options = opts,
+                                   font_size = if (wide) 8 else 9)
+  }
+  k
+}
+
+# κοινό θέμα για όλα τα ggplot (συνέπεια) + παλέτα Okabe-Ito (φιλική σε αχρωματοψία)
+theme_paper <- function(base = 11) {
+  ggplot2::theme_bw(base_size = base) +
+    ggplot2::theme(
+      panel.grid.minor = ggplot2::element_blank(),
+      panel.grid.major = ggplot2::element_line(linewidth = 0.3, colour = "grey88"),
+      plot.title    = ggplot2::element_text(face = "bold", size = ggplot2::rel(1.0)),
+      plot.subtitle = ggplot2::element_text(colour = "grey30", size = ggplot2::rel(0.85)),
+      strip.background = ggplot2::element_rect(fill = "grey92", colour = NA),
+      strip.text    = ggplot2::element_text(face = "bold", size = ggplot2::rel(0.75)),
+      axis.title    = ggplot2::element_text(size = ggplot2::rel(0.9)),
+      legend.position = "none")
+}
+okabe_ito <- c("#000000", "#E69F00", "#56B4E9", "#009E73",
+               "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
+sector_pal <- c(Tech = "#0072B2", Fin = "#E69F00", Comm = "#009E73",
+                Cons = "#D55E00", Health = "#CC79A7")
+
+# seed = ΑΜ φοιτητή, για αναπαραγωγιμότητα
+set.seed(1125886)
+```
+
+# Λήψη Δεδομένων και Κατασκευή Μεταβλητών
+
+## Λήψη Δεδομένων από το Yahoo Finance
+
+```{r download-data, results='hide'}
+# Y = DIA (εξαρτημένη), X1..X15 = οι 15 μετοχές, ομαδοποιημένες κατά τομέα
+tickers_Y      <- "DIA"
+tickers_tech   <- c("NVDA", "AAPL", "MSFT")           # Τεχνολογία
+tickers_fin    <- c("BAC",  "JPM",  "V")              # Χρηματοοικονομικά
+tickers_comm   <- c("GOOGL","META", "NFLX")           # Επικοινωνίες
+tickers_cons   <- c("AMZN", "TSLA", "HD")             # Καταναλωτικά
+tickers_health <- c("LLY",  "JNJ",  "UNH")            # Υγεία
+
+# Συγκεντρωτικός πίνακας μετοχών και τομέων (θα χρησιμεύσει αργότερα)
+sectors_df <- data.frame(
+  Ticker = c(tickers_tech, tickers_fin, tickers_comm, tickers_cons, tickers_health),
+  Sector = c(rep("Tech",     3),
+             rep("Fin",      3),
+             rep("Comm",     3),
+             rep("Cons",     3),
+             rep("Health",   3))
+)
+all_tickers <- c(tickers_Y, sectors_df$Ticker)
+
+# Ημερομηνίες περιόδου μελέτης
+date_from <- "2021-01-01"
+date_to   <- "2025-12-31"
+
+# Cache των δεδομένων σε CSV: αν υπάρχει το αρχείο στο data/ το διαβάζουμε,
+# αλλιώς το κατεβάζουμε μία φορά από το Yahoo και το σώζουμε. Έτσι το knit είναι
+# ντετερμινιστικό, δεν εξαρτάται από το δίκτυο, και τα δεδομένα ταξιδεύουν με το
+# report (αναπαραγωγιμότητα, §3.3).
+data_dir <- "data"
+dir.create(data_dir, showWarnings = FALSE)
+
+get_one <- function(sym) {
+  csv <- file.path(data_dir, paste0(sym, ".csv"))
+  if (file.exists(csv)) {                         # από cache
+    df <- read.csv(csv, stringsAsFactors = FALSE)
+    x  <- xts::xts(as.matrix(df[, -1]), order.by = as.Date(df$Date))
+    return(x)
+  }
+  res <- tryCatch(                                # αλλιώς κατέβασέ το
+    quantmod::getSymbols(sym, src = "yahoo",
+                         from = date_from, to = date_to,
+                         auto.assign = FALSE),
+    error = function(e) NULL
+  )
+  if (!is.null(res)) {
+    write.csv(data.frame(Date = index(res), zoo::coredata(res)),
+              csv, row.names = FALSE)
+  }
+  res
+}
+
+prices_list <- setNames(lapply(all_tickers, get_one), all_tickers)
+
+# Έλεγχος ότι διαβάστηκαν/κατέβηκαν όλα τα σύμβολα
+ok <- sapply(prices_list, function(x) !is.null(x) && NROW(x) > 100)
+stopifnot("Αποτυχία λήψης/ανάγνωσης για ένα ή περισσότερα tickers." = all(ok))
+```
+
+## Κατασκευή Κλασικών και Διαστηματικών Αποδόσεων
+
+Σύμφωνα με την εκφώνηση και το συνοδευτικό υλικό:
+
+- **Κλασική απόδοση (Close-to-Close):**  $r_t = \dfrac{C_t}{C_{t-1}} - 1$
+- **Διαστηματική απόδοση:**  $R_t = \Bigl[\dfrac{L_t}{C_{t-1}}-1,\;\dfrac{H_t}{C_{t-1}}-1\Bigr]$
+- **Κέντρο:**  $\text{mid}_t = \dfrac{L_t + H_t}{2\,C_{t-1}} - 1$
+- **Ημι-εύρος:** $\text{rad}_t = \dfrac{H_t - L_t}{2\,C_{t-1}}$
+
+```{r build-returns}
+#  ΣΥΝΑΡΤΗΣΗ: Υπολογισμός κλασικής και διαστηματικής απόδοσης
+compute_returns <- function(prices_xts) {
+  P_prev <- lag(Cl(prices_xts))           # προηγούμενο close
+  L      <- Lo(prices_xts)                # ημερήσιο low
+  H      <- Hi(prices_xts)                # ημερήσιο high
+  Ccur   <- Cl(prices_xts)                # τρέχον close
+
+  classical <- Ccur / P_prev - 1          # κλασική απόδοση Close-to-Close
+  mid       <- (L + H) / (2 * P_prev) - 1 # κέντρο διαστήματος
+  rad       <- (H - L) / (2 * P_prev)     # ημι-εύρος διαστήματος
+
+  out <- merge(classical, mid, rad)
+  colnames(out) <- c("classical", "mid", "rad")
+  out
+}
+
+# Εφαρμογή σε όλες τις σειρές
+returns_list <- lapply(prices_list, compute_returns)
+
+# ενώνουμε τα πάντα σε ένα ευθυγραμμισμένο panel: κάθε ticker -> 3 στήλες
+# (classical, mid, rad) με πρόθεμα το ticker
+build_panel <- function(rlist) {
+  zs <- lapply(seq_along(rlist), function(i) {
+    z <- rlist[[i]]
+    colnames(z) <- paste0(names(rlist)[i], "_", colnames(z))
+    z
+  })
+  out <- Reduce(function(a, b) merge(a, b, join = "inner"), zs)
+  out <- na.omit(out)
+  as.data.frame(out)
+}
+
+panel <- build_panel(returns_list)
+
+# Διαχωρισμός σε τρία υπο-σύνολα: κλασικά, mid, rad
+get_block <- function(suffix) {
+  cols <- grep(paste0("_", suffix, "$"), colnames(panel), value = TRUE)
+  df   <- panel[, cols, drop = FALSE]
+  colnames(df) <- sub(paste0("_", suffix, "$"), "", cols)
+  df
+}
+
+df_classical <- get_block("classical")   # απλές αποδόσεις
+df_mid       <- get_block("mid")         # κέντρα διαστημάτων
+df_rad       <- get_block("rad")         # ημι-εύρη διαστημάτων
+
+# Στις τρεις παρακάτω μεταβλητές απομονώνουμε την εξαρτημένη και τις
+# ανεξάρτητες, για διευκόλυνση των επόμενων ενοτήτων.
+Y_classical <- df_classical$DIA
+X_classical <- df_classical[, setdiff(colnames(df_classical), "DIA")]
+
+Y_mid <- df_mid$DIA
+X_mid <- df_mid[, setdiff(colnames(df_mid), "DIA")]
+
+Y_rad <- df_rad$DIA
+X_rad <- df_rad[, setdiff(colnames(df_rad), "DIA")]
+
+# Συμβολοσειρά διάστασης δείγματος (για ερμηνεία)
+n_obs <- nrow(df_classical)
+```
+
+```{r show-panel-dim}
+cat("Αριθμός ευθυγραμμισμένων ημερήσιων παρατηρήσεων: ", n_obs, "\n")
+cat("Αριθμός ανεξάρτητων μεταβλητών                : ", ncol(X_classical), "\n")
+cat("Περίοδος μελέτης                              : ", date_from, "έως", date_to, "\n")
+```
+
+**Σχόλιο:** Μετά την ευθυγράμμιση των 16 σειρών και την αφαίρεση των NAs (που οφείλονται
+κυρίως στη μετατόπιση `lag` της πρώτης ημέρας), προκύπτει ένα πλήρες ισορροπημένο panel
+που μας επιτρέπει αδιάβλητη παράλληλη ανάλυση κλασικών και διαστηματικών μεταβλητών
+χωρίς αλγοριθμικές προκαταλήψεις λόγω missing values.
+
+## Επισκόπηση της Περιόδου Μελέτης
+
+```{r fig1-timeline, fig.height=5, fig.cap="Σχήμα 1 — Πορεία του DIA στην περίοδο μελέτης: τιμή κλεισίματος (πάνω) και ημερήσια απόδοση (κάτω), με σημειωμένα βασικά γεγονότα αγοράς."}
+# χρονογραμμή αναφοράς: τι "βλέπει" το δείγμα 2021-2025
+dia_px  <- prices_list$DIA
+tl <- rbind(
+  data.frame(Date = index(dia_px), value = as.numeric(Cl(dia_px)),
+             panel = "Τιμή κλεισίματος DIA ($)"),
+  data.frame(Date = as.Date(rownames(df_classical)), value = Y_classical,
+             panel = "Ημερήσια απόδοση DIA"))
+tl$panel <- factor(tl$panel, levels = unique(tl$panel))
+events <- data.frame(
+  Date  = as.Date(c("2022-01-05", "2023-03-10", "2023-06-01",
+                    "2024-08-05", "2025-04-02")),
+  label = c("έναρξη bear\n(πληθωρισμός)", "SVB", "AI rally",
+            "vol spike\nΑυγ 2024", "δασμοί\nΑπρ 2025"))
+ggplot(tl, aes(Date, value)) +
+  geom_vline(data = events, aes(xintercept = Date),
+             linetype = 3, colour = "grey45") +
+  geom_line(colour = "#0072B2", linewidth = 0.35) +
+  geom_text(data = cbind(events, panel = factor(levels(tl$panel)[1],
+                                                levels = levels(tl$panel))),
+            aes(x = Date, y = Inf, label = label),
+            vjust = 1.15, size = 2.4, colour = "grey25", lineheight = 0.9) +
+  facet_wrap(~ panel, ncol = 1, scales = "free_y") +
+  labs(title = "Σχήμα 1 — DIA: τιμή και αποδόσεις, 2021–2025",
+       x = NULL, y = NULL) +
+  theme_paper()
+```
+
+Η πενταετία καλύπτει ένα ασυνήθιστα πλούσιο φάσμα καθεστώτων αγοράς: την ανάκαμψη του
+2021, τη bear market του 2022 (πληθωρισμός / επιθετικές αυξήσεις επιτοκίων), το τραπεζικό
+στρες του Μαρτίου 2023 (SVB), το AI rally του 2023–24, το απότομο vol spike του Αυγούστου
+2024 και την αναταραχή των δασμών του Απριλίου 2025. Η ποικιλία αυτή είναι σημαντική για
+τη μελέτη: τροφοδοτεί τόσο τη διακύμανση των αποδόσεων (Μέρος A) όσο και τη διακύμανση
+της **αστάθειας** (Μέρος B) — και αξιοποιείται ρητά στην ανάλυση υποπεριόδων του
+Παραρτήματος Δ10.
+
+---
+
+# Μέρος A — Κλασική Ανάλυση
+
+## A1. Περιγραφική Στατιστική {#a1}
+
+### Πίνακας Περιγραφικών Μέτρων
+
+```{r a1-desc-table}
+#  Υπολογισμός βασικών περιγραφικών μέτρων για κάθε κλασική απόδοση
+desc_stats <- function(x) {
+  c(
+    Mean     = mean(x,   na.rm = TRUE),
+    Median   = median(x, na.rm = TRUE),
+    SD       = sd(x,     na.rm = TRUE),
+    IQR      = IQR(x,    na.rm = TRUE),             # ενδοτεταρτημοριακό εύρος
+    Min      = min(x,    na.rm = TRUE),
+    Max      = max(x,    na.rm = TRUE),
+    Skewness = moments::skewness(x, na.rm = TRUE),
+    Kurtosis = moments::kurtosis(x, na.rm = TRUE),  # ορισμός Pearson (Normal=3)
+    Missing  = 100 * mean(is.na(x))                 # ποσοστό ελλειπουσών (%)
+  )
+}
+
+tab_desc_classical <- t(sapply(df_classical, desc_stats))
+ktab(tab_desc_classical, digits = 4, wide = TRUE,
+     caption = "Πίνακας A1.1 — Περιγραφικά μέτρα κλασικών ημερήσιων αποδόσεων (Close-to-Close).")
+```
+
+### Ιστογράμματα
+
+```{r a1-histograms, fig.height=7.5, fig.cap="Ιστογράμματα των 16 κλασικών ημερήσιων αποδόσεων (κόκκινη γραμμή: μέσος όρος)."}
+# Ιστογράμματα όλων των κλασικών αποδόσεων - ggplot facet (paper level)
+long_cl <- utils::stack(df_classical)
+long_cl$ind <- factor(long_cl$ind, levels = colnames(df_classical))
+means_cl <- data.frame(ind = factor(colnames(df_classical),
+                                    levels = colnames(df_classical)),
+                       mu = sapply(df_classical, mean))
+ggplot(long_cl, aes(x = values)) +
+  geom_histogram(bins = 40, fill = "#0072B2", colour = "white", linewidth = 0.1) +
+  geom_vline(data = means_cl, aes(xintercept = mu),
+             colour = "#D55E00", linewidth = 0.5) +
+  facet_wrap(~ ind, scales = "free", ncol = 4) +
+  labs(title = "A1 — Ιστογράμματα κλασικών ημερήσιων αποδόσεων",
+       x = "Ημερήσια απόδοση (Close-to-Close)", y = "Συχνότητα") +
+  guides(x = guide_axis(check.overlap = TRUE)) +
+  theme_paper()
+```
+
+### Boxplots
+
+```{r a1-boxplots, fig.height=4.6, fig.cap="Boxplots κλασικών αποδόσεων ανά μετοχή, χρωματισμένα κατά τομέα."}
+long_box <- utils::stack(df_classical)
+long_box$ind <- factor(long_box$ind, levels = colnames(df_classical))
+grp <- c(DIA = "Δείκτης", setNames(sectors_df$Sector, sectors_df$Ticker))
+long_box$grp <- factor(grp[as.character(long_box$ind)],
+                       levels = c("Δείκτης", "Tech", "Fin", "Comm", "Cons", "Health"))
+ggplot(long_box, aes(x = ind, y = values, fill = grp)) +
+  geom_hline(yintercept = 0, linetype = 2, colour = "grey50") +
+  geom_boxplot(outlier.alpha = 0.2, outlier.size = 0.4, linewidth = 0.3) +
+  scale_fill_manual(values = c("Δείκτης" = "#444444", sector_pal)) +
+  labs(title = "A1.2 — Boxplots κλασικών αποδόσεων (DIA + 15 μετοχές)",
+       x = NULL, y = "Ημερήσια απόδοση", fill = "Κατηγορία") +
+  theme_paper() +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1),
+        legend.position = "right")
+```
+
+```{r a1-facts, include=FALSE}
+# Υπολογιζόμενα μεγέθη που τροφοδοτούν τον σχολιασμό (αντί για σταθερές).
+sds_cl          <- sapply(X_classical, sd)
+kurt_cl         <- sapply(df_classical, moments::kurtosis)
+skew_cl         <- sapply(df_classical, moments::skewness)
+a1_vol          <- names(sort(sds_cl, decreasing = TRUE))[1:2]
+a1_dia_sd       <- sd(df_classical$DIA)
+a1_kmin         <- round(min(kurt_cl), 1)
+a1_kmax         <- round(max(kurt_cl), 1)
+a1_nneg         <- sum(skew_cl < 0)
+a1_mean_abs_max <- max(abs(sapply(df_classical, mean)))
+a1_miss_total   <- sum(is.na(df_classical))           # συνολικές ελλείπουσες
+```
+
+#### Σχολιασμός A1
+
+Από τον Πίνακα A1.1 και τα παραπάνω διαγράμματα προκύπτουν τα εξής:
+
+* **Μέσοι όροι:** Όλες οι σειρές έχουν μέση ημερήσια απόδοση πολύ κοντά στο μηδέν·
+  η μεγαλύτερη (κατ' απόλυτη τιμή) μέση ημερήσια απόδοση σε όλο το δείγμα είναι μόλις
+  `r signif(a1_mean_abs_max, 2)`. Αυτό συμφωνεί με τη χρηματοοικονομική βιβλιογραφία:
+  η αναμενόμενη μέση ημερήσια απόδοση είναι πρακτικά μη διακριτή από το μηδέν στο
+  επίπεδο του θορύβου.
+* **Διασπορά:** Η τυπική απόκλιση του DIA (`r round(a1_dia_sd, 4)`) είναι σαφώς
+  μικρότερη από εκείνη των επιμέρους μετοχών — αποτύπωση της **επίδρασης του
+  χαρτοφυλακιακού διαφορισμού** (portfolio diversification). Οι δύο πιο ασταθείς
+  μετοχές του δείγματος είναι η **`r a1_vol[1]`** και η **`r a1_vol[2]`**. Το
+  ενδοτεταρτημοριακό εύρος (IQR) στον Πίνακα A1.1 επιβεβαιώνει την ίδια διάταξη στην
+  κορυφαία πεντάδα διασποράς· η UNH ωστόσο υποχωρεί στην κατάταξη κατά IQR — ένδειξη
+  ότι η SD της είναι διογκωμένη από λίγες ακραίες ημέρες.
+* **Πληρότητα δεδομένων:** Μετά την ευθυγράμμιση το panel είναι **πλήρως ισορροπημένο**
+  (`r a1_miss_total` ελλείπουσες τιμές, δηλαδή 0% σε κάθε σειρά), οπότε δεν απαιτείται
+  imputation — προϋπόθεση που ελέγχεται ρητά στον υποχρεωτικό προ-μοντελικό κατάλογο.
+* **Λοξότητα (Skewness):** Μόνο **`r a1_nneg`** από τις 16 σειρές είναι αρνητικά λοξές· οι
+  **υπόλοιπες `r 16 - a1_nneg` (μαζί με τον ίδιο τον DIA) είναι ελαφρά θετικά λοξές**. Έντονη
+  αρνητική λοξότητα εμφανίζεται μόνο σε μεμονωμένες μετοχές μετά από ειδικά γεγονότα (π.χ. NFLX,
+  UNH με απότομες πτώσεις). Δηλαδή στο δείγμα μας **δεν** ισχύει γενικευμένα το «φαινόμενο
+  αρνητικής λοξότητας» — η εικόνα είναι κατά μετοχή, με κυρίαρχη την ελαφριά θετική λοξότητα.
+* **Κύρτωση (Kurtosis):** Όλες οι σειρές έχουν *kurtosis* > 3 (εύρος `r a1_kmin`–`r a1_kmax`,
+  ορισμός Pearson με Normal = 3), δηλαδή **παχιές ουρές (fat tails)** — κεντρικό
+  χαρακτηριστικό των χρηματιστηριακών αποδόσεων που αναιρεί την υπόθεση κανονικότητας
+  και δικαιολογεί τη χρήση robust διαγνωστικών στις επόμενες ενότητες.
+* **Boxplots:** Είναι εμφανή τα πολυάριθμα ακραία σημεία (outliers) πέραν των whiskers,
+  ιδίως για τις πιο ασταθείς μετοχές — ένδειξη ημερών έντονης διακύμανσης (π.χ.
+  ανακοινώσεις κερδών, μακρο-σοκ).
+
+Στο σύνολό τους, τα παραπάνω ευρήματα επιβεβαιώνουν τη **μη-κανονικότητα** των
+αποδόσεων και υποδεικνύουν ότι, για ασφαλέστερα συμπεράσματα, στη συνέχεια θα
+χρησιμοποιήσουμε διαγνωστικά και ευαισθησία σε ακραίες παρατηρήσεις (residual
+diagnostics, στην ενότητα A5).
+
+---
+
+## A2. Πίνακας Συσχετίσεων και Πολυσυγγραμμικότητα {#a2}
+
+### Πίνακας Συσχετίσεων (Heatmap)
+
+```{r a2-cor, fig.width=8, fig.height=7}
+#  Υπολογισμός πίνακα συσχετίσεων Pearson για όλες τις κλασικές αποδόσεις
+cor_classical <- cor(df_classical)
+
+corrplot::corrplot(
+  cor_classical,
+  method      = "color",
+  type        = "upper",
+  order       = "hclust",
+  addCoef.col = "black",
+  number.cex  = 0.55,
+  tl.cex      = 0.8,
+  tl.col      = "black",
+  tl.srt      = 45,
+  col         = colorRampPalette(c("#2166AC","white","#B2182B"))(200),
+  title       = "Σχήμα A2.1 — Heatmap συσχετίσεων (Pearson) — κλασικές αποδόσεις",
+  mar         = c(0,0,2,0)
+)
+```
+
+### Variance Inflation Factor (VIF)
+
+```{r a2-vif}
+# Υπολόγισε VIF από το πλήρες γραμμικό μοντέλο Y ~ X1..X15
+df_full <- data.frame(Y = Y_classical, X_classical)
+lm_full <- lm(Y ~ ., data = df_full)
+vif_vals <- car::vif(lm_full)
+
+ktab(data.frame(Variable = names(vif_vals),
+                VIF      = round(as.numeric(vif_vals), 3)),
+     caption = "Πίνακας A2.1 — VIF για όλες τις ανεξάρτητες μεταβλητές.",
+     row.names = FALSE)
+```
+
+### Ζεύγη με $|r| > 0.8$
+
+```{r a2-high-corr}
+# Εντοπισμός υψηλά συσχετισμένων ζευγών (εκτός DIA)
+ind_corr <- cor(X_classical)
+hi <- which(abs(ind_corr) > 0.8 & upper.tri(ind_corr), arr.ind = TRUE)
+
+# Μεγέθη που τροφοδοτούν τον σχολιασμό
+n_hi_pairs   <- nrow(hi)
+a2_maxvif    <- max(vif_vals)
+a2_maxr      <- max(abs(ind_corr[upper.tri(ind_corr)]))
+a2_maxvif_var <- names(vif_vals)[which.max(vif_vals)]
+cor_with_dia <- cor(X_classical, df_classical$DIA)[, 1]
+a2_dia_max   <- names(sort(cor_with_dia, decreasing = TRUE))[1]
+a2_dia_min   <- names(sort(cor_with_dia))[1]
+
+if (n_hi_pairs > 0) {
+  hi_df <- data.frame(
+    Var1 = rownames(ind_corr)[hi[, 1]],
+    Var2 = colnames(ind_corr)[hi[, 2]],
+    r    = round(ind_corr[hi], 3)
+  )
+  hi_df <- hi_df[order(-abs(hi_df$r)), ]
+  ktab(hi_df, caption = "Πίνακας A2.2 — Ζεύγη ανεξάρτητων με |r| > 0.8.",
+       row.names = FALSE)
+} else {
+  cat("Δεν εντοπίστηκαν ζεύγη ανεξάρτητων μετοχών με |r| > 0.8.\n")
+}
+```
+
+#### Σχολιασμός A2
+
+* Το heatmap δείχνει τις ισχυρότερες θετικές συσχετίσεις **εντός των τομέων** (μετοχές
+  του ίδιου κλάδου μοιράζονται κοινούς παράγοντες κινδύνου). Η μέγιστη συσχέτιση μεταξύ
+  δύο ανεξάρτητων μετοχών στο δείγμα είναι `r round(a2_maxr, 3)`.
+* Όλες οι μετοχές παρουσιάζουν **θετική συσχέτιση με τον DIA**· η ισχυρότερη είναι η
+  **`r a2_dia_max`** και η ασθενέστερη η **`r a2_dia_min`** (λιγότερο ευθυγραμμισμένη με
+  την price-weighted σύνθεση του δείκτη).
+* Από τον Πίνακα A2.1, η **μέγιστη τιμή VIF είναι `r round(a2_maxvif, 2)`**
+  (μεταβλητή `r a2_maxvif_var`) —
+  `r if (a2_maxvif < 10) "κάτω από το κρίσιμο όριο 10 (Kutner et al., 2005), οπότε δεν υφίσταται σοβαρή πολυσυγγραμμικότητα στο πλήρες μοντέλο" else "πάνω από το όριο 10, ένδειξη ουσιαστικής πολυσυγγραμμικότητας"`.
+  `r if (n_hi_pairs == 0) "Κανένα ζεύγος ανεξάρτητων μετοχών δεν ξεπερνά το |r| > 0.8" else if (n_hi_pairs == 1) "Εντοπίστηκε 1 ζεύγος με |r| > 0.8" else paste0("Εντοπίστηκαν ", n_hi_pairs, " ζεύγη με |r| > 0.8")`,
+  ωστόσο η εντός-τομέα συσχέτιση δικαιολογεί τη χρήση stepwise επιλογής (A5) και
+  παραγοντικής ανάλυσης (A3).
+
+---
+
+## A3. Παραγοντική Ανάλυση (Factor Analysis) {#a3}
+
+### Διαγνωστικοί Έλεγχοι (KMO & Bartlett)
+
+```{r a3-prelim}
+# Ελέγχουμε αν είναι κατάλληλα τα δεδομένα για παραγοντική ανάλυση
+kmo_res <- psych::KMO(X_classical)
+print(kmo_res)
+bart_res <- psych::cortest.bartlett(cor(X_classical), n = n_obs)
+print(bart_res)
+```
+
+### Επιλογή Αριθμού Παραγόντων
+
+```{r a3-nfactors, fig.height=4}
+# Παράλληλη ανάλυση + scree για να εκτιμήσουμε τον βέλτιστο αριθμό παραγόντων
+psych::fa.parallel(X_classical, fa = "fa", n.iter = 50,
+                   show.legend = TRUE, main = "A3.1 — Parallel analysis (FA)")
+```
+
+Η parallel analysis υποδεικνύει **4** παράγοντες, ενώ το κριτήριο Kaiser (βλ. A4) δίνει
+**3** — η 4η ιδιοτιμή (0.881) είναι κάτω από το 1. Προκρίνουμε **k = 3** για λόγους
+φειδωλότητας και ερμηνευσιμότητας: ο τέταρτος παράγοντας δεν έχει σαφή οικονομική
+ταυτότητα, ενώ η λύση των τριών αντιστοιχεί σε αναγνωρίσιμες οικογένειες κλάδων.
+
+### Παραγοντική Ανάλυση με Principal Axis Factoring (PAF) και Varimax
+
+```{r a3-fa}
+# Η parallel analysis προτείνει 4 παράγοντες, το Kaiser όμως 3 (4η ιδιοτιμή 0.881 < 1).
+# Κρατάμε k = 3: φειδωλότητα + ερμηνευσιμότητα (βλ. κείμενο πάνω από το chunk).
+fa_model <- psych::fa(X_classical, nfactors = 3, fm = "pa",
+                      rotate = "varimax", scores = "regression")
+print(fa_model$loadings, cutoff = 0.30, sort = TRUE)
+```
+
+```{r a3-fa-diagram, fig.height=5, fig.cap="A3.2 — Διάγραμμα παραγόντων (factor diagram, varimax)."}
+# Οπτικοποίηση της παραγοντικής δομής (όπως στο υλικό του μαθήματος)
+psych::fa.diagram(fa_model, main = "A3.2 — Δομή Παραγόντων (PAF + Varimax)")
+```
+
+```{r a3-fa-extras}
+cat("Πίνακας κοινοτήτων (communalities):\n")
+print(round(fa_model$communality, 3))
+
+cat("\nΠοσοστό συνολικής διακύμανσης που εξηγείται από κάθε παράγοντα:\n")
+print(round(fa_model$Vaccounted, 3))
+```
+
+```{r a3-facts, include=FALSE}
+# Μεγέθη που τροφοδοτούν τον σχολιασμό (αντί για σταθερές).
+a3_kmo   <- kmo_res$MSA
+a3_bartp <- bart_res$p.value
+L_fa     <- unclass(fa_model$loadings)
+fa_assign    <- apply(abs(L_fa), 1, which.max)         # κυρίαρχος παράγοντας/μετοχή
+fa_groups    <- lapply(sort(unique(fa_assign)),
+                       function(k) names(fa_assign)[fa_assign == k])
+fa_group_str <- vapply(fa_groups, paste, character(1), collapse = ", ")
+vacc      <- fa_model$Vaccounted
+a3_cumvar <- if ("Cumulative Var" %in% rownames(vacc))
+               vacc["Cumulative Var", ncol(vacc)] else sum(vacc["Proportion Var", ])
+a3_lowcomm <- names(sort(fa_model$communality))[1]
+a3_lowcomm_set <- names(which(fa_model$communality < 0.4))   # κάτω από το όριο 0.4
+```
+
+#### Σχολιασμός A3
+
+* **KMO:** Η συνολική τιμή Kaiser-Meyer-Olkin είναι **`r round(a3_kmo, 3)`**
+  (`r if (a3_kmo >= 0.9) "«marvelous» κατά Kaiser" else if (a3_kmo >= 0.8) "«meritorious»" else "οριακή καταλληλότητα"`)^[Η
+  εκτύπωση του psych στρογγυλοποιεί σε «0.9»· η ακριβής τιμή είναι `r round(a3_kmo, 4)` < 0.90,
+  άρα «meritorious», όχι «marvelous».],
+  δηλαδή η αναλογία κοινής προς μοναδική διακύμανση δικαιολογεί απόλυτα την παραγοντική ανάλυση.
+* **Bartlett:** Η μηδενική υπόθεση ότι ο πίνακας συσχετίσεων είναι μοναδιαίος
+  απορρίπτεται ισχυρά (p `r if (a3_bartp < 2.2e-16) "< 2.2e-16" else paste("=", signif(a3_bartp, 3))`),
+  επιβεβαιώνοντας σημαντική κοινή διακύμανση μεταξύ των μετοχών.
+* **Δομή Παραγόντων:** Με βάση τη μέγιστη φόρτιση κάθε μετοχής (μετά από varimax), οι
+  παράγοντες ομαδοποιούν τις μετοχές ως εξής:
+  `r paste(sprintf("(%d) %s", seq_along(fa_group_str), fa_group_str), collapse = " · ")`.
+  Όπως φαίνεται από την **πραγματική** αυτή ομαδοποίηση, προκύπτει ένας **ευρύς παράγοντας
+  mega-cap growth** (τεχνολογία, επικοινωνίες και καταναλωτικά μαζί), ένας **στενός τραπεζικός**
+  (BAC, JPM) και ένας **αμυντικός/υγείας**. Αξιοσημείωτο: η συν-κίνηση των αποδόσεων **δεν
+  ταυτίζεται πάντα με τον ονομαστικό κλάδο** — η V (χρηματοοικονομικά) φορτώνει με το growth και η
+  HD (καταναλωτικά) με τις αμυντικές, αμφότερες όμως **οριακά** (σχεδόν ισόπαλες φορτίσεις σε
+  δύο παράγοντες, διαφορά $|\lambda|$ μόλις 0.01–0.08), οπότε η ένταξή τους — και το α της Δ4 —
+  είναι ευαίσθητα σε μικρές μεταβολές του δείγματος· υπενθύμιση ότι η στατιστική συσχέτιση ≠
+  ταξινόμηση GICS.
+  Οι παράγοντες εξηγούν συνολικά **`r round(100 * a3_cumvar, 1)`%** της συνολικής διακύμανσης.
+* **Κοινότητες (communalities):** Είναι υψηλές για τις μετοχές των μεγάλων τομέων· τη
+  χαμηλότερη εμφανίζει η **`r a3_lowcomm`**. Σύμφωνα με τον εμπειρικό κανόνα του μαθήματος
+  (communality > 0.4), οι μετοχές **`r paste(a3_lowcomm_set, collapse=", ")`** βρίσκονται
+  κάτω από το όριο: ένα μεγάλο μέρος της διακύμανσής τους είναι **ιδιοσυγκρασιακό** και δεν
+  εξηγείται από τους 3 κοινούς παράγοντες — αναμενόμενο για μετοχές με έντονη ειδική
+  συμπεριφορά (π.χ. TSLA, ή αμυντικές με χαμηλό market beta).
+
+---
+
+## A4. Ανάλυση Κύριων Συνιστωσών (PCA) {#a4}
+
+```{r a4-pca}
+# PCA στις κλασικές αποδόσεις των 15 ανεξάρτητων μετοχών (όχι του DIA)
+pca_classical <- prcomp(X_classical, center = TRUE, scale. = TRUE)
+summary(pca_classical)
+```
+
+### Scree Plot & Κριτήριο Kaiser
+
+```{r a4-scree, fig.height=3.6, fig.cap="Scree plot (ιδιοτιμές, κριτήριο Kaiser>1) και αθροιστική εξηγημένη διασπορά."}
+eig_vals <- (pca_classical$sdev)^2
+n_keep   <- sum(eig_vals > 1)
+lv <- c("Ιδιοτιμές (κριτήριο Kaiser > 1)", "Αθροιστική εξηγημένη διασπορά")
+scree_df <- rbind(
+  data.frame(PC = seq_along(eig_vals), value = eig_vals, panel = lv[1]),
+  data.frame(PC = seq_along(eig_vals),
+             value = cumsum(eig_vals) / sum(eig_vals), panel = lv[2]))
+scree_df$panel <- factor(scree_df$panel, levels = lv)
+href <- data.frame(panel = factor(lv, levels = lv), y = c(1, 0.80))
+ggplot(scree_df, aes(PC, value)) +
+  geom_hline(data = href, aes(yintercept = y), linetype = 2, colour = "#D55E00") +
+  geom_line(colour = "#0072B2", linewidth = 0.6) +
+  geom_point(colour = "#0072B2", size = 1.6) +
+  facet_wrap(~ panel, scales = "free_y") +
+  scale_x_continuous(breaks = seq(1, length(eig_vals), 2)) +
+  labs(title = "A4.1 — Scree plot & αθροιστική εξηγημένη διασπορά (PCA)",
+       x = "Κύρια συνιστώσα (PC)", y = NULL) +
+  theme_paper()
+
+cat("Κανόνας Kaiser (eigenvalue > 1): διατηρούμε", n_keep, "κύριες συνιστώσες.\n")
+cat("Ποσοστό διακύμανσης που εξηγείται από PC1+PC2+PC3:",
+    round(sum(eig_vals[1:3]) / sum(eig_vals) * 100, 2), "%\n")
+```
+
+### Φορτίσεις (Loadings) των πρώτων συνιστωσών
+
+```{r a4-loadings}
+loadings_mat <- pca_classical$rotation[, 1:min(4, ncol(pca_classical$rotation))]
+ktab(loadings_mat, digits = 3,
+     caption = "Πίνακας A4.1 — Φορτίσεις των πρώτων 4 κύριων συνιστωσών.")
+```
+
+#### Σχολιασμός A4
+
+* Με βάση το **κριτήριο του Kaiser** (ιδιοτιμή > 1) διατηρούμε **`r n_keep`** κύριες
+  συνιστώσες. Η πρώτη συνιστώσα εξηγεί **`r round(eig_vals[1] / sum(eig_vals) * 100, 1)`%**
+  και οι τρεις πρώτες **`r round(sum(eig_vals[1:3]) / sum(eig_vals) * 100, 1)`%** της
+  συνολικής διακύμανσης.
+* **Kaiser έναντι αθροιστικής διασποράς:** Οι δύο κανόνες δίνουν διαφορετική εικόνα. Με
+  Kaiser κρατάμε `r n_keep` συνιστώσες, αλλά αυτές καλύπτουν μόλις
+  `r round(sum(eig_vals[1:3]) / sum(eig_vals) * 100, 1)`%, **κάτω από τον εμπειρικό κανόνα
+  του 70–80%**· για να φτάσουμε το 70% χρειάζονται **`r which(cumsum(eig_vals)/sum(eig_vals) >= 0.70)[1]`**
+  συνιστώσες. Η ένταση αυτή είναι αναμενόμενη για ένα θορυβώδες cross-section ημερήσιων
+  αποδόσεων (ισχυρός κοινός παράγοντας αγοράς + πολλές σχεδόν-ισοδύναμες ιδιοσυγκρασιακές
+  διαστάσεις) και υπενθυμίζει ότι ο αριθμός των συνιστωσών εξαρτάται από τον στόχο
+  (ερμηνεία vs ποσοστό διασποράς).
+* **PC1 — «Market factor»:** Όλες οι μετοχές φορτώνουν με το ίδιο πρόσημο (το πρόσημο
+  του ιδιοδιανύσματος είναι συμβατικό). Πρόκειται για τον *common market factor* —
+  εξηγεί γιατί όλες οι μετοχές κινούνται σε γενικές γραμμές μαζί (συστηματικός κίνδυνος).
+* **PC2 — «Growth/Tech vs. Defensive»:** Συνήθως διαχωρίζει τις growth/tech μετοχές από
+  τις αμυντικές.
+* **PC3:** Λεπτομερέστερη διάκριση κλάδων (π.χ. χρηματοοικονομικά έναντι επικοινωνιών).
+
+Η οικονομική ερμηνεία είναι σύμφωνη με την παραγοντική ανάλυση της A3: δύο σχεδόν
+ισοδύναμες οπτικές γωνίες της ίδιας κοινής δομής διακύμανσης.
+
+---
+
+## A5. Γραμμική Παλινδρόμηση και Stepwise Επιλογή {#a5}
+
+### Πλήρες Μοντέλο
+
+```{r a5-full}
+# Πλήρες γραμμικό μοντέλο για την κλασική απόδοση του DIA
+df_lm <- data.frame(Y = Y_classical, X_classical)
+lm_full <- lm(Y ~ ., data = df_lm)
+summary(lm_full)
+```
+
+### Stepwise Επιλογή Μεταβλητών (Both Directions, AIC)
+
+```{r a5-step, results='hide'}
+# Χρησιμοποιούμε step() με κριτήριο AIC και κατεύθυνση both, ξεκινώντας από
+# το πλήρες μοντέλο. Το trace = FALSE μειώνει τον θόρυβο στην έξοδο.
+lm_step <- step(lm_full, direction = "both", trace = FALSE)
+```
+
+```{r a5-step-summary}
+summary(lm_step)
+cat("\nΕπιλεγμένες μεταβλητές μετά το stepwise:\n")
+print(setdiff(all.vars(formula(lm_step)), "Y"))
+cat("\nAIC πλήρους:    ", round(AIC(lm_full), 2),
+    "\nAIC stepwise:   ", round(AIC(lm_step), 2), "\n")
+```
+
+### Διαγνωστικοί Έλεγχοι του Τελικού Μοντέλου
+
+```{r a5-diag, fig.height=7}
+op <- par(mfrow = c(2, 2))
+plot(lm_step, which = 1:4)
+par(op)
+```
+
+```{r a5-diag-tests}
+# Έλεγχος κανονικότητας καταλοίπων - Jarque-Bera (κανονικό για χρηματοοικονομικές
+# σειρές: ελέγχει από κοινού λοξότητα & κύρτωση) και Shapiro-Wilk.
+cat("Jarque-Bera test (έλεγχος κανονικότητας — λοξότητα/κύρτωση):\n")
+print(moments::jarque.test(as.numeric(resid(lm_step))))
+
+cat("\nShapiro-Wilk επί των residuals (έλεγχος κανονικότητας):\n")
+print(shapiro.test(resid(lm_step)))   # n = 1253 < 5000, εντός ορίου του ελέγχου
+
+cat("\nΈλεγχος ετεροσκεδαστικότητας (Cook-Weisberg score test, car::ncvTest):\n")
+print(car::ncvTest(lm_step))
+
+cat("\nDurbin-Watson test (έλεγχος αυτοσυσχέτισης):\n")
+print(car::durbinWatsonTest(lm_step))
+```
+
+```{r a5-gvlma}
+# Συνολικός έλεγχος των υποθέσεων του γραμμικού μοντέλου (όπως στο υλικό
+# του μαθήματος: gvlma - Global Validation of Linear Model Assumptions).
+print(gvlma::gvlma(lm_step))
+```
+
+```{r a5-facts, include=FALSE}
+# Μεγέθη που τροφοδοτούν τον σχολιασμό (αντί για σταθερές).
+a5_r2   <- summary(lm_step)$r.squared
+a5_adj  <- summary(lm_step)$adj.r.squared
+a5_naic <- AIC(lm_full); a5_saic <- AIC(lm_step)
+a5_bp_p <- car::ncvTest(lm_step)$p
+a5_dw   <- car::durbinWatsonTest(lm_step)$dw
+a5_jb_p <- moments::jarque.test(as.numeric(resid(lm_step)))$p.value
+a5_sel  <- setdiff(all.vars(formula(lm_step)), "Y")   # επιλεγμένες μεταβλητές
+# Συστατικά του DJIA (που αντιγράφει ο DIA) εντός των 15 μετοχών μας, κατά την
+# περίοδο 2021-2025 (AMZN προστέθηκε 02/2024, NVDA 11/2024 - η σύνθεση μεταβάλλεται):
+dow_members  <- c("AAPL", "MSFT", "JPM", "V", "UNH", "JNJ", "HD", "AMZN", "NVDA")
+dow_in_model <- intersect(dow_members, colnames(X_classical))
+non_dow      <- setdiff(colnames(X_classical), dow_members)
+```
+
+#### Σχολιασμός A5
+
+* **Συντελεστές & p-values:** Το stepwise μοντέλο διατηρεί **`r length(a5_sel)`** από τις
+  15 μεταβλητές: `r paste(a5_sel, collapse = ", ")`. Πρόκειται κατά κύριο λόγο για μετοχές
+  με μεγάλη «βαρύτητα» στον δείκτη. Όλες οι διατηρούμενες κλίσεις είναι στατιστικά
+  σημαντικές (μέγιστο p = `r signif(max(summary(lm_step)$coefficients[-1, 4]), 2)`),
+  επομένως το stepwise μοντέλο αποτελεί το **ελάχιστα επαρκές υπόδειγμα (minimal
+  adequate model)**: καμία μεταβλητή δεν μπορεί να αφαιρεθεί χωρίς στατιστικά
+  σημαντική απώλεια προσαρμογής.
+* **R² = `r round(a5_r2, 3)` (adj. R² = `r round(a5_adj, 3)`):** Υψηλό, καθώς ο δείκτης
+  είναι σε μεγάλο βαθμό **γραμμικός συνδυασμός των συστατικών του**. Ο DJIA που αντιγράφει
+  ο DIA περιλαμβάνει 30 μετοχές· από τις 15 μετοχές μας οι **`r length(dow_in_model)`**
+  (`r paste(dow_in_model, collapse = ", ")`) είναι συστατικά του δείκτη κατά την περίοδο
+  μελέτης (οι AMZN και NVDA προστέθηκαν εντός του 2024), ενώ οι υπόλοιπες
+  (`r paste(non_dow, collapse = ", ")`) δεν είναι.
+* **AIC:** Μειώνεται από `r round(a5_naic, 1)` (πλήρες) σε `r round(a5_saic, 1)` (stepwise):
+  η αφαίρεση μη-σημαντικών μεταβλητών βελτιώνει το μοντέλο χωρίς ουσιαστική απώλεια
+  ερμηνευτικής ισχύος.
+* **Διαγνωστικά υπολοίπων:**
+    - Από το «Residuals vs. Fitted» δεν εμφανίζεται έντονη μη-γραμμικότητα.
+    - **Jarque-Bera:** p = `r signif(a5_jb_p, 3)`
+      `r if (a5_jb_p < 0.05) "(< 0.05 → απορρίπτεται η κανονικότητα των καταλοίπων, σύμφωνα με τις παχιές ουρές/λοξότητα της A1)" else "(δεν απορρίπτεται η κανονικότητα)"`.
+      Στο Q-Q plot τα υπόλοιπα αποκλίνουν από την κανονικότητα στις ουρές — σύμφωνο με
+      την A1 (παχιές ουρές των αποδόσεων).
+    - **Cook-Weisberg score test (συγγενής του Breusch-Pagan):** p = `r signif(a5_bp_p, 3)`
+      `r if (a5_bp_p < 0.05) "(< 0.05 → ενδείξεις ετεροσκεδαστικότητας· για στιβαρότητα ενδείκνυνται robust/HC standard errors, π.χ. coeftest με sandwich estimator)" else "(δεν απορρίπτεται η ομοσκεδαστικότητα)"`.
+    - **Durbin-Watson:** DW = `r round(a5_dw, 3)` (κοντά στο 2 → πρακτικά απουσία
+      αυτοσυσχέτισης πρώτου βαθμού στα residuals, αναμενόμενο για ημερήσιες αποδόσεις).
+    - **Συνολικός έλεγχος gvlma:** Η μόνη υπόθεση που παραβιάζεται είναι η κανονικότητα,
+      και μάλιστα **αποκλειστικά μέσω της κύρτωσης** (Kurtosis component): η λοξότητα, η
+      μορφή σύνδεσης (link) και η ομοσκεδαστικότητα κρίνονται αποδεκτές (η συνιστώσα
+      ετεροσκεδαστικότητας του gvlma είναι ασθενέστερος, γενικός έλεγχος — ο κατευθυντικός
+      score test έναντι των προσαρμοσμένων τιμών παραπάνω είναι πιο ευαίσθητος, εξ ου και η
+      φαινομενική ασυμφωνία). Το εύρημα είναι
+      απόλυτα συνεπές με την A1 (παχιές ουρές) και τον έλεγχο Jarque-Bera, και επιβεβαιώνει
+      ότι το πρόβλημα δεν είναι η συστηματική δομή του μοντέλου αλλά οι ακραίες αποδόσεις.
+
+---
+
+# Μέρος B — Διαστηματική Ανάλυση
+
+## B1. Περιγραφή Διαστηματικών Δεδομένων {#b1}
+
+### Ιστογράμματα `mid` και `rad`
+
+```{r b1-hist-mid, fig.height=7.5, fig.cap="Ιστογράμματα των mid (κέντρα διαστημάτων) για DIA και τις 15 μετοχές."}
+long_mid <- utils::stack(df_mid)
+long_mid$ind <- factor(long_mid$ind, levels = colnames(df_mid))
+ggplot(long_mid, aes(x = values)) +
+  geom_histogram(bins = 40, fill = "#009E73", colour = "white", linewidth = 0.1) +
+  facet_wrap(~ ind, scales = "free", ncol = 4) +
+  labs(title = "B1 — Ιστογράμματα mid (κέντρα διαστημάτων)",
+       x = "mid (κέντρο ημερήσιου διαστήματος)", y = "Συχνότητα") +
+  guides(x = guide_axis(check.overlap = TRUE)) +
+  theme_paper()
+```
+
+```{r b1-hist-rad, fig.height=7.5, fig.cap="Ιστογράμματα των rad (ημι-εύρη): έντονα δεξιά-λοξά και μη-αρνητικά."}
+long_rd <- utils::stack(df_rad)
+long_rd$ind <- factor(long_rd$ind, levels = colnames(df_rad))
+ggplot(long_rd, aes(x = values)) +
+  geom_histogram(bins = 40, fill = "#D55E00", colour = "white", linewidth = 0.1) +
+  facet_wrap(~ ind, scales = "free", ncol = 4) +
+  labs(title = "B1 — Ιστογράμματα rad (ημι-εύρη / ενδοημερήσια αστάθεια)",
+       x = "rad (ημι-εύρος ημερήσιου διαστήματος)", y = "Συχνότητα") +
+  guides(x = guide_axis(check.overlap = TRUE)) +
+  theme_paper()
+```
+
+### Boxplots του `rad` ανά Τομέα
+
+```{r b1-rad-sector, fig.height=4.5}
+# Μακρά μορφή: για κάθε ανεξάρτητη μετοχή και τομέα συγκεντρώνουμε rad
+long_rad <- do.call(rbind, lapply(seq_len(nrow(sectors_df)), function(i) {
+  data.frame(Sector = sectors_df$Sector[i],
+             Ticker = sectors_df$Ticker[i],
+             rad    = df_rad[[sectors_df$Ticker[i]]])
+}))
+
+long_rad$Sector <- factor(long_rad$Sector,
+                          levels = c("Tech", "Fin", "Comm", "Cons", "Health"))
+ggplot(long_rad, aes(x = Sector, y = rad, fill = Sector)) +
+  geom_boxplot(outlier.alpha = 0.2, outlier.size = 0.4, linewidth = 0.3) +
+  scale_fill_manual(values = sector_pal) +
+  labs(title = "B1.1 — Ημερήσιο ημι-εύρος (rad) ανά τομέα",
+       x = "Τομέας", y = "rad (ενδοημερήσια αστάθεια)") +
+  theme_paper()
+```
+
+### Συσχέτιση μεταξύ `mid` και `rad`
+
+```{r b1-mid-rad-cor}
+# Για κάθε ticker, υπολογίζουμε τη συσχέτιση μεταξύ της mid και της rad σειράς του
+mid_rad_cor <- sapply(colnames(df_mid),
+                      function(nm) cor(df_mid[[nm]], df_rad[[nm]]))
+ktab(data.frame(Ticker = names(mid_rad_cor),
+                Cor_mid_rad = round(mid_rad_cor, 3)),
+     caption = "Πίνακας B1.1 — Συσχέτιση mid–rad ανά ticker.", row.names = FALSE)
+
+# Μεγέθη για τον σχολιασμό
+sector_mean_rad <- tapply(long_rad$rad, long_rad$Sector, mean)
+b1_sec_max <- names(which.max(sector_mean_rad))
+b1_sec_min <- names(which.min(sector_mean_rad))
+b1_cor_md  <- mean(mid_rad_cor[setdiff(names(mid_rad_cor), "DIA")])
+b1_cor_abs <- mean(abs(mid_rad_cor[setdiff(names(mid_rad_cor), "DIA")]))
+b1_cor_rng <- range(mid_rad_cor[setdiff(names(mid_rad_cor), "DIA")])
+```
+
+#### Σχολιασμός B1
+
+* Τα ιστογράμματα του **mid** έχουν σχήμα παρόμοιο με τα ιστογράμματα των κλασικών
+  αποδόσεων (A1) — γεγονός θεωρητικά αναμενόμενο, αφού το mid αποτελεί ομοιόμορφη
+  εκτίμηση του κέντρου της ημερήσιας πορείας τιμών.
+* Τα ιστογράμματα του **rad** είναι **έντονα δεξιά λοξά** και **αυστηρά μη-αρνητικά**
+  (rad ≥ 0 εξ ορισμού). Αυτό υπαγορεύει τη χρήση log-transform ή GLM στην ενδεχόμενη
+  μοντελοποίηση της αστάθειας.
+* Το boxplot ανά τομέα δείχνει ότι η μεγαλύτερη **μέση** ενδοημερήσια αστάθεια (rad)
+  εμφανίζεται στον τομέα **`r b1_sec_max`** και η χαμηλότερη στον **`r b1_sec_min`** —
+  οριακά μόνο κάτω από τον Health (η ίδια οριακή διάταξη ισχύει και στις διαμέσους
+  του boxplot).
+* Η μέση **συσχέτιση mid–rad** των ανεξάρτητων μετοχών είναι `r round(b1_cor_md, 3)`
+  (μέση απόλυτη `r round(b1_cor_abs, 3)`, εύρος από `r round(b1_cor_rng[1], 3)` έως
+  `r round(b1_cor_rng[2], 3)`)· λίγες επιμέρους συσχετίσεις είναι στατιστικά σημαντικές
+  στο n = `r n_obs` (κρίσιμη τιμή $\approx$ `r round(1.96/sqrt(n_obs), 3)`), αλλά όλες
+  οικονομικά μικρές — γεγονός που υπογραμμίζει ότι **το κέντρο και το εύρος της ημέρας
+  μεταφέρουν διαφορετική πληροφορία**, δικαιολογώντας τη διττή ανάλυση της επόμενης ενότητας.
+
+---
+
+## B2. Διαστηματική Παλινδρόμηση — Μέθοδος των Κέντρων (Billard & Diday, 2000) {#b2}
+
+Ακολουθώντας την εκφώνηση, προσαρμόζουμε **δύο ανεξάρτητες γραμμικές παλινδρομήσεις**: μία
+στα κέντρα (`mid`) και μία στα ημι-εύρη (`rad`). Σημείωση ακριβείας: η εκτίμηση *ξεχωριστής*
+εξίσωσης και για το εύρος αντιστοιχεί αυστηρά στη **Μέθοδο Κέντρου-και-Εύρους (Center and
+Range Method, CRM)** των @limaneto2008· η αρχική **Μέθοδος Κέντρων** των
+@billard2000 εκτιμά μόνο την εξίσωση των κέντρων και τη χρησιμοποιεί για αμφότερα
+τα άκρα του διαστήματος. Διατηρούμε τον όρο «Μέθοδος των Κέντρων» όπως στην εκφώνηση,
+υλοποιώντας τη γενίκευσή της (CRM, δηλαδή `mid` **και** `rad`).
+
+```{r b2-mid-model}
+#  Μοντέλο για τα mids: εξηγούμε το κέντρο της απόδοσης του DIA
+mid_data   <- data.frame(Y = Y_mid, X_mid)
+model_mid  <- lm(Y ~ ., data = mid_data)
+summary(model_mid)
+```
+
+```{r b2-rad-model}
+#  Μοντέλο για τα rads: εξηγούμε την αστάθεια (ημι-εύρος) του DIA
+#  Σημείωση: το Y_rad ίσως έχει σχεδόν μηδενική διακύμανση -> πιθανό NaN R²
+rad_data   <- data.frame(Y = Y_rad, X_rad)
+
+# Έλεγχος προστασίας έναντι μηδενικής διακύμανσης στο Y_rad
+var_Y_rad <- var(Y_rad, na.rm = TRUE)
+cat("Διακύμανση Y_rad =", signif(var_Y_rad, 4), "\n")
+
+if (var_Y_rad > .Machine$double.eps * 100) {
+  model_rad <- lm(Y ~ ., data = rad_data)
+  print(summary(model_rad))
+} else {
+  cat("ΠΡΟΣΟΧΗ: το Y_rad έχει σχεδόν μηδενική διακύμανση —",
+      "το rad model δεν είναι ερμηνεύσιμο (R² ~ NaN).\n")
+  model_rad <- NULL
+}
+```
+
+```{r b2-facts, include=FALSE}
+b2_r2_mid  <- summary(model_mid)$r.squared
+cm         <- summary(model_mid)$coefficients
+b2_sig_mid <- rownames(cm)[-1][cm[-1, "Pr(>|t|)"] < 0.05]
+if (!is.null(model_rad)) {
+  b2_r2_rad  <- summary(model_rad)$r.squared
+  cr         <- summary(model_rad)$coefficients
+  b2_sig_rad <- rownames(cr)[-1][cr[-1, "Pr(>|t|)"] < 0.05]
+  # --- Έλεγχος εγκυρότητας του rad μοντέλου (κρίσιμο: αυτοσυσχέτιση/ευρωστία) ---
+  b2_rad_lb  <- Box.test(resid(model_rad), lag = 10, type = "Ljung-Box")$p.value
+  b2_rad_hac <- lmtest::coeftest(model_rad,
+                  vcov. = sandwich::NeweyWest(model_rad, lag = 5, prewhite = FALSE))
+  b2_nsig_rad_hac <- sum(b2_rad_hac[-1, "Pr(>|t|)"] < 0.05)        # σημαντικές υπό HAC
+  # Πόσο "μηχανικό" είναι το R²: παλινδρόμηση Y_rad στον ΜΕΣΟ ΟΡΟ των 15 rad
+  b2_r2_rad_mean <- summary(lm(Y_rad ~ rowMeans(X_rad)))$r.squared
+} else { b2_r2_rad <- NA; b2_sig_rad <- character(0)
+  b2_rad_lb <- NA; b2_nsig_rad_hac <- NA; b2_r2_rad_mean <- NA }
+```
+
+### Γραφική Σύγκριση Παρατηρούμενων–Προβλεπόμενων Διαστημάτων
+
+```{r b2-pred-actual, fig.height=5}
+# Προβλέψεις mid (και rad αν είναι ερμηνεύσιμο)
+yhat_mid <- as.numeric(predict(model_mid))
+yhat_rad <- if (!is.null(model_rad)) as.numeric(predict(model_rad)) else rep(mean(Y_rad), length(Y_rad))
+
+idx <- seq_len(min(100, length(Y_mid)))   # κρατάμε τις πρώτες 100 παρατηρήσεις
+plot_df <- data.frame(
+  t        = idx,
+  obs_low  = Y_mid[idx] - Y_rad[idx],
+  obs_high = Y_mid[idx] + Y_rad[idx],
+  pred_low = yhat_mid[idx] - yhat_rad[idx],
+  pred_high= yhat_mid[idx] + yhat_rad[idx]
+)
+
+ggplot(plot_df, aes(x = t)) +
+  geom_ribbon(aes(ymin = obs_low,  ymax = obs_high, fill = "Παρατηρούμενο"),
+              alpha = 0.55) +
+  geom_ribbon(aes(ymin = pred_low, ymax = pred_high, fill = "Προβλεπόμενο (CRM)"),
+              alpha = 0.5) +
+  scale_fill_manual(values = c("Παρατηρούμενο" = "grey60",
+                               "Προβλεπόμενο (CRM)" = "#0072B2")) +
+  labs(title = "B2.1 — Παρατηρούμενα vs Προβλεπόμενα διαστήματα DIA (πρώτες 100 ημέρες)",
+       x = "Ημέρα (χρονικός δείκτης)",
+       y = "Διάστημα απόδοσης [mid − rad, mid + rad]", fill = NULL) +
+  theme_paper() +
+  theme(legend.position = "top")
+```
+
+### Ακρίβεια Πρόβλεψης Διαστημάτων (RMSE κάτω/άνω ορίου)
+
+Η ποιότητα της μεθόδου CRM δεν αποτυπώνεται μόνο από τα $R^2$ των δύο εξισώσεων,
+αλλά κυρίως από το **πόσο καλά ανακατασκευάζεται το ίδιο το διάστημα** $[\hat{L},\hat{U}]$.
+Ακολουθώντας τους @limaneto2008, αξιολογούμε χωριστά το κάτω όριο
+$\hat{L}=\hat{Y}_{mid}-\hat{Y}_{rad}$ και το άνω όριο $\hat{U}=\hat{Y}_{mid}+\hat{Y}_{rad}$,
+καθώς και το ποσοστό προβλέψεων με έγκυρη διάταξη ($\hat{U}\ge\hat{L}$).
+
+```{r b2-interval-accuracy}
+# Παρατηρούμενα και προβλεπόμενα όρια διαστήματος (πλήρες δείγμα)
+obs_L  <- Y_mid - Y_rad;        obs_U  <- Y_mid + Y_rad
+pred_L <- yhat_mid - yhat_rad;  pred_U <- yhat_mid + yhat_rad
+
+rmse <- function(a, b) sqrt(mean((a - b)^2))
+b2_rmse_L  <- rmse(obs_L, pred_L)            # RMSE κάτω ορίου
+b2_rmse_U  <- rmse(obs_U, pred_U)            # RMSE άνω ορίου
+b2_valid   <- mean(pred_U >= pred_L) * 100   # % έγκυρων (μη-ανάστροφων) διαστημάτων
+# Σύγκριση με «αφελή» πρόβλεψη (σταθερό μέσο διάστημα) -> βελτίωση RMSE
+naive_L <- mean(obs_L); naive_U <- mean(obs_U)
+b2_skill_L <- (1 - b2_rmse_L / rmse(obs_L, rep(naive_L, length(obs_L)))) * 100
+b2_skill_U <- (1 - b2_rmse_U / rmse(obs_U, rep(naive_U, length(obs_U)))) * 100
+
+b2_acc_tab <- data.frame(
+  `Όριο`                       = c("Κάτω (L)", "Άνω (U)"),
+  `RMSE`                       = signif(c(b2_rmse_L, b2_rmse_U), 3),
+  `Βελτίωση έναντι αφελούς (%)`= round(c(b2_skill_L, b2_skill_U), 1),
+  check.names = FALSE)
+ktab(b2_acc_tab, digits = 3, row.names = FALSE,
+     caption = "Πίνακας B2.1 — Ακρίβεια πρόβλεψης ορίων διαστήματος (CRM, εντός δείγματος).")
+```
+
+#### Σχολιασμός B2
+
+* **mid model:** Το R² του μοντέλου των κέντρων είναι **`r round(b2_r2_mid, 3)`**, παραπλήσιο
+  με αυτό της κλασικής παλινδρόμησης (A5). Αυτό είναι θεωρητικά αναμενόμενο: τα κέντρα
+  διατηρούν σχεδόν όλη την πληροφορία τάσης που εμπεριέχει η απόδοση Close-to-Close.
+  Στατιστικά σημαντικές (p < 0.05) είναι **`r length(b2_sig_mid)`** μεταβλητές:
+  `r paste(b2_sig_mid, collapse = ", ")`.
+* **rad model:** Η διακύμανση του $Y_{rad}$ (αστάθεια του DIA) **δεν είναι μηδενική**
+  ($\approx `r signif(var_Y_rad, 3)`$) — ακριβώς επειδή ως Y επιλέχθηκε ο **ETF DIA** (και όχι
+  ο ίδιος ο δείκτης Dow Jones, που λόγω τρόπου υπολογισμού θα έδινε σχεδόν μηδενικό rad). Το
+  R² του rad μοντέλου είναι **`r round(b2_r2_rad, 3)`**, αλλά πρέπει να ερμηνευτεί **με προσοχή**:
+    - **Είναι σε μεγάλο βαθμό μηχανικό (φαινόμενο άθροισης):** μια απλή παλινδρόμηση του $Y_{rad}$
+      στον **μέσο όρο** των 15 επιμέρους rad δίνει ήδη R² = **`r round(b2_r2_rad_mean, 3)`**. Δηλαδή
+      το εύρημα είναι κατά βάση η ταυτότητα «το εύρος του δείκτη ≈ μέσο εύρος των συστατικών»,
+      όχι μια ανακαλυφθείσα δομική σχέση.
+    - **Η συμπερασματολογία OLS είναι άκυρη:** τα κατάλοιπα του rad μοντέλου είναι **έντονα
+      αυτοσυσχετισμένα** (Ljung-Box p `r if (b2_rad_lb < 0.001) "< 0.001" else paste("=", signif(b2_rad_lb,2))`, volatility clustering),
+      οπότε τα μη-διορθωμένα p-values υπερεκτιμούν τη σημαντικότητα. **Υπό εύρωστους (HAC)
+      εκτιμητές** οι στατιστικά σημαντικές μεταβλητές πέφτουν από `r length(b2_sig_rad)` σε
+      **`r b2_nsig_rad_hac`**.
+  Το ορθό συμπέρασμα είναι ότι η ενδοημερήσια αστάθεια του DIA αντανακλά έναν **ισχυρό κοινό
+  παράγοντα αστάθειας** (market-wide volatility) — όχι ότι είναι «γραμμικά προβλέψιμη». Η σωστή
+  μοντελοποίησή της απαιτεί δυναμικά υποδείγματα τύπου **GARCH** (βλ. Γ3, Δ6).
+* **Ακρίβεια διαστημάτων (Πίνακας B2.1 — εντός δείγματος· για εκτός δείγματος βλ. Δ7):**
+  Τα RMSE των δύο ορίων είναι μικρά
+  (κάτω: `r signif(b2_rmse_L, 3)`, άνω: `r signif(b2_rmse_U, 3)`) και η μέθοδος βελτιώνει
+  την αφελή πρόβλεψη σταθερού διαστήματος κατά `r round(b2_skill_L, 1)`% (κάτω όριο) και
+  `r round(b2_skill_U, 1)`% (άνω όριο) — σημειωτέον ότι περίπου τα 2/3 της βελτίωσης
+  προέρχονται από την εξίσωση του κέντρου (mid). Επιπλέον, **`r round(b2_valid, 1)`%** των
+  προβλεπόμενων διαστημάτων έχουν έγκυρη διάταξη ($\hat{U}\ge\hat{L}$), δηλαδή η μη-περιορισμένη
+  CRM εδώ δεν παράγει ανάστροφα διαστήματα — γι' αυτό και δεν χρειάζεται η περιοριστική
+  παραλλαγή Constrained CRM [@limaneto2010].
+* **Εξάρτηση από την περίοδο:** Όπως προειδοποιεί η εκφώνηση (FAQ), σε ηρεμότερες περιόδους η
+  διακύμανση του $Y_{rad}$ μπορεί να γίνει πολύ μικρή και το R² του rad μοντέλου να καταρρεύσει
+  (ή να γίνει NaN). Στη δική μας πενταετία η αυξημένη μακροοικονομική μεταβλητότητα (πανδημία,
+  πληθωρισμός, AI-cycle) διατήρησε ισχυρό σήμα και άρα αξιοσημείωτη ερμηνευτική ισχύ.
+
+---
+
+## B3. Ανάλυση Κύριων Συνιστωσών στα `mid` (Σύγκριση με την A4) {#b3}
+
+```{r b3-pca-mid}
+pca_mid <- prcomp(X_mid, center = TRUE, scale. = TRUE)
+summary(pca_mid)
+```
+
+### Scree Plot και Σύγκριση Φορτίσεων
+
+```{r b3-scree-compare, fig.height=3.8, fig.cap="Επικαλυπτόμενα scree plots: κλασική PCA (αποδόσεις) vs PCA στα mid."}
+ev_cl <- pca_classical$sdev^2
+ev_md <- pca_mid$sdev^2
+scree_cmp <- rbind(
+  data.frame(PC = seq_along(ev_cl), eig = ev_cl, Ανάλυση = "Κλασική (αποδόσεις)"),
+  data.frame(PC = seq_along(ev_md), eig = ev_md, Ανάλυση = "PCA στα mid"))
+ggplot(scree_cmp, aes(PC, eig, colour = Ανάλυση)) +
+  geom_hline(yintercept = 1, linetype = 2, colour = "grey50") +
+  geom_line(linewidth = 0.7) + geom_point(size = 1.8) +
+  scale_colour_manual(values = c("Κλασική (αποδόσεις)" = "#0072B2",
+                                 "PCA στα mid" = "#D55E00")) +
+  scale_x_continuous(breaks = seq(1, length(ev_cl), 2)) +
+  labs(title = "B3.1 — Σύγκριση scree: κλασική PCA vs PCA στα mid",
+       x = "Κύρια συνιστώσα (PC)", y = "Ιδιοτιμή (eigenvalue)", colour = NULL) +
+  theme_paper() +
+  theme(legend.position = "top")
+```
+
+```{r b3-loading-correlation}
+# Πόσο όμοιες είναι οι πρώτες συνιστώσες; Συγκρίνουμε τα loadings.
+common_pcs <- min(3, ncol(pca_mid$rotation), ncol(pca_classical$rotation))
+cor_loadings_pc <- sapply(seq_len(common_pcs), function(k) {
+  abs(cor(pca_mid$rotation[, k], pca_classical$rotation[, k]))
+})
+
+ktab(data.frame(PC = paste0("PC", seq_len(common_pcs)),
+                AbsCor = round(cor_loadings_pc, 3)),
+     caption = "Πίνακας B3.1 — Απόλυτη συσχέτιση loadings κλασικής PCA και PCA στα mid.",
+     row.names = FALSE)
+```
+
+#### Σχολιασμός B3
+
+* Τα ποσοστά εξηγημένης διακύμανσης από την PCA-στα-`mid` αναδεικνύουν την **ίδια δομή, με
+  ελαφρώς χαμηλότερα ποσοστά** από την κλασική PCA: η πρώτη συνιστώσα εξηγεί
+  **`r round(summary(pca_mid)$importance[2,1]*100,1)`%**
+  (έναντι `r round(summary(pca_classical)$importance[2,1]*100,1)`% στην κλασική) και οι τρεις
+  πρώτες **`r round(sum((pca_mid$sdev^2)[1:3]) / sum(pca_mid$sdev^2) * 100, 1)`%**.
+* Η **απόλυτη συσχέτιση των loadings** μεταξύ των δύο αναλύσεων είναι
+  `r paste(sprintf("PC%d: %.3f", seq_along(cor_loadings_pc), cor_loadings_pc), collapse = ", ")`.
+  Οι τιμές (σχεδόν μονάδα) δείχνουν ότι:
+
+  > Η οικονομική δομή που μετράμε δεν εξαρτάται από το αν χρησιμοποιούμε close-to-close ή
+  > mid αποδόσεις — είναι η ίδια **κοινή δομή κινήσεων αγοράς και κλάδων**.
+
+* Το εύρημα δικαιολογεί εκ των υστέρων τη σύσταση της εκφώνησης: η κλασική PCA στα `mid` είναι
+  έγκυρη και ερμηνεύσιμη, χωρίς ανάγκη περίπλοκης Interval PCA.
+
+---
+
+## B4. Διαστηματική Παραγοντική Ανάλυση — Βιβλιογραφική Συζήτηση {#b4}
+
+Η ενότητα αυτή είναι, σύμφωνα με τις οδηγίες της εκφώνησης, **καθαρά βιβλιογραφική
+και θεωρητική** — δεν παρουσιάζεται υλοποίηση.
+
+### Γιατί δεν υπάρχει «εύκολη» Interval Factor Analysis;
+
+Η κλασική παραγοντική ανάλυση (PAF, ML-FA, αλγόριθμος EM) βασίζεται **εξ ολοκλήρου
+στον πίνακα συσχετίσεων** $R$. Όταν οι μεταβλητές είναι διαστήματα και όχι σημεία,
+η κατασκευή ενός **μοναδικά καθορισμένου** πίνακα συσχετίσεων είναι μη τετριμμένη:
+
+1. **Πολλαπλοί ορισμοί συνδιακύμανσης για διαστήματα.** Στη βιβλιογραφία
+  (Bertrand & Goupil, 2000· Billard & Diday, 2003) έχουν προταθεί διαφορετικοί
+  ορισμοί συνδιακύμανσης (centers method, vertices method, symbolic covariance,
+  span-based covariance). Διαφορετική επιλογή → διαφορετικός $R$ → διαφορετικά
+  loadings → **μη μοναδική λύση**.
+2. **Πρόβλημα ταυτοποίησης (identifiability).** Στο κλασικό μοντέλο FA, εάν
+  $\Lambda$ είναι ένας πίνακας φορτίσεων, τότε για κάθε ορθογώνιο $Q$ είναι
+  $\Lambda Q$ επίσης λύση. Για διαστηματικές μεταβλητές, στην ταυτοποίηση
+  προστίθεται και η **ασάφεια ορισμού του πεδίου ορισμού** (η μεταβλητή
+  «τύπου διαστήματος» δεν είναι ένα σημείο, αλλά ένα **πεδίο τιμών** — άρα η
+  παραγοντική δομή πρέπει να σέβεται και την τάξη/ένταξη των ορίων του
+  διαστήματος).
+3. **Δεν υπάρχει σταθερή μετρική.** Σε αντίθεση με την κλασική PCA που έχει
+  μοναδική γεωμετρική ερμηνεία (μέγιστη διακύμανση), η Interval FA δεν διαθέτει
+  γενικά αποδεκτή μετρική «καλής εφαρμογής» που να έχει επικρατήσει.
+
+### Οι προσεγγίσεις της βιβλιογραφίας SDA
+
+Στη σχετική βιβλιογραφία SDA για διαστηματική πολυμεταβλητή ανάλυση — τη
+midpoint–radius προσέγγιση των @lauro2000 και τη γραμμή των interval-PCA εργασιών
+[@douzal2007; @douzal2011]:
+
+* Έχει προταθεί να αντικατασταθεί κάθε διάστημα από ζεύγος **(mid, rad)** και να
+  εφαρμοστεί παραγοντοποίηση σε πίνακα **διπλάσιας διάστασης** — με τη ρητή
+  επισήμανση ότι αυτό **δεν είναι ισοδύναμο** με την παραγοντοποίηση του αρχικού
+  symbolic πίνακα.
+* Συζητείται η έννοια της **interval correlation**, η οποία υπό ορισμένους
+  (μικτούς) ορισμούς συνδιακύμανσης δεν περιορίζεται πάντα στο $[-1,1]$ και
+  μπορεί να δίνει ασύμμετρα αποτελέσματα.
+* Οι προτεινόμενοι αλγόριθμοι απαιτούν εξειδικευμένο λογισμικό· δεν υπάρχει
+  τυποποιημένο πακέτο R/Python που να τους εφαρμόζει με σταθερά,
+  αναπαραγώγιμα αποτελέσματα. Το παλαιότερο πακέτο `RSDA` παρουσιάζει
+  γνωστές αστάθειες υλοποίησης.
+
+### Γιατί η Interval PCA είναι ευκολότερη από την Interval FA;
+
+Η Interval PCA, ακόμη και με τις εναλλακτικές μετρικές, βασίζεται σε
+**γεωμετρική παραγοντοποίηση πίνακα** η οποία έχει αναλυτική λύση (SVD-like).
+Η Interval FA, αντίθετα, βασίζεται σε **πιθανοθεωρητικό μοντέλο** με latent
+parameters που πρέπει να εκτιμηθούν με αλγόριθμο EM ή ML — αλγόριθμοι που
+απαιτούν τη μοναδικότητα του covariance και υποθέσεις για την κατανομή των
+σφαλμάτων. Για διαστηματικά δεδομένα, **δεν υπάρχουν αντίστοιχα αποδεκτά
+πιθανοθεωρητικά μοντέλα** (π.χ. multivariate interval-normal κατανομές δεν
+είναι καθιερωμένες).
+
+### Πορισματικός Σχολιασμός
+
+Στην παρούσα εργασία, σύμφωνα και με την οδηγία της εκφώνησης, **δεν επιχειρούμε**
+υλοποίηση Interval FA. Αντί αυτής, στην ενότητα **A3 εφαρμόσαμε κλασική FA** στις
+αποδόσεις και στην **B3 κλασική PCA στα mids**, που αποτελεί την επιστημονικά
+αποδεκτή πρακτική προσέγγιση.
+
+---
+
+## B5. Δομικά Μοντέλα Εξισώσεων (SEM) — Bonus {#b5}
+
+Στο πλαίσιο του bonus, εκτιμούμε ένα μοντέλο Δομικών Εξισώσεων **με μία λανθάνουσα
+μεταβλητή «TechFactor»** που μετράται από τα κέντρα των τριών τεχνολογικών μετοχών
+(NVDA, AAPL, MSFT). Η εξίσωση δομής συνδέει την απόδοση του DIA (στο `mid`) με
+αυτόν τον τεχνολογικό παράγοντα:
+
+$$\text{TechFactor} =_{\sim} \text{NVDA}_{mid} + \text{AAPL}_{mid} + \text{MSFT}_{mid}$$
+$$Y_{mid} \sim \text{TechFactor}$$
+
+```{r b5-sem}
+#  Προετοιμασία δεδομένων για το lavaan
+sem_data <- data.frame(
+  Y_mid    = Y_mid,
+  NVDA_mid = X_mid$NVDA,
+  AAPL_mid = X_mid$AAPL,
+  MSFT_mid = X_mid$MSFT
+)
+
+#  Ορισμός του μοντέλου SEM
+#  =~  : μετρητικό μοντέλο (latent =~ indicators)
+#  ~   : δομικό μοντέλο (outcome ~ predictors)
+sem_model <- '
+  TechFactor =~ NVDA_mid + AAPL_mid + MSFT_mid
+  Y_mid       ~ TechFactor
+'
+
+fit_sem <- lavaan::sem(model = sem_model, data = sem_data)
+lavaan::summary(fit_sem, fit.measures = TRUE, standardized = TRUE)
+```
+
+```{r b5-sem-fit}
+# Εξαγωγή των βασικών μέτρων προσαρμογής
+fm <- lavaan::fitMeasures(fit_sem,
+                          c("cfi", "tli", "rmsea", "srmr", "chisq", "df", "pvalue"))
+ktab(data.frame(Measure = names(fm), Value = round(as.numeric(fm), 3)),
+     caption = "Πίνακας B5.1 — Συγκεντρωτικά μέτρα προσαρμογής SEM.", row.names = FALSE)
+```
+
+```{r b5-facts, include=FALSE}
+b5_cfi   <- fm[["cfi"]]; b5_tli <- fm[["tli"]]
+b5_rmsea <- fm[["rmsea"]]; b5_srmr <- fm[["srmr"]]; b5_df <- fm[["df"]]
+pe          <- lavaan::parameterEstimates(fit_sem)
+b5_reg      <- pe[pe$op == "~" & pe$lhs == "Y_mid", ]
+b5_beta_est <- b5_reg$est[1]; b5_beta_p <- b5_reg$pvalue[1]
+std         <- lavaan::standardizedSolution(fit_sem)
+b5_load_min <- min(std$est.std[std$op == "=~"])
+b5_n        <- nrow(sem_data)
+```
+
+#### Σχολιασμός B5 (SEM)
+
+* **Latent loadings:** Και οι τρεις τεχνολογικές μετοχές φορτώνουν θετικά και σημαντικά στον
+  λανθάνοντα παράγοντα «TechFactor»· η ελάχιστη τυποποιημένη φόρτιση είναι
+  **`r round(b5_load_min, 2)`**, ένδειξη ισχυρής και ομοιόμορφης μέτρησης του παράγοντα (τα
+  NVDA/AAPL/MSFT οδηγούνται από κοινούς παράγοντες — AI cycle, semiconductors, επιτόκια).
+* **Δομικός συντελεστής (Y_mid ~ TechFactor):** Εκτίμηση **`r round(b5_beta_est, 3)`** με
+  p-value `r if (b5_beta_p < 0.001) "< 0.001" else signif(b5_beta_p, 3)` — θετικός και ισχυρά
+  σημαντικός: ο τεχνολογικός παράγοντας επιδρά θετικά στο κέντρο της απόδοσης του DIA.
+* **Δείκτες προσαρμογής** (df = `r b5_df`, n = `r b5_n`):
+    - **CFI = `r round(b5_cfi, 3)`**, **TLI = `r round(b5_tli, 3)`** (κατώφλι «καλής» 0.95).
+    - **RMSEA = `r round(b5_rmsea, 3)`** (κατώφλι «καλής» 0.06· 0.08–0.10 οριακό).
+    - **SRMR = `r round(b5_srmr, 3)`** (κατώφλι 0.08).
+
+  Η εικόνα προσαρμογής είναι **μεικτή και πρέπει να ερμηνευτεί προσεκτικά**: το SRMR
+  (`r round(b5_srmr, 3)`) είναι άριστο και το CFI υψηλό, αλλά το **RMSEA = `r round(b5_rmsea, 3)`
+  υποδηλώνει πραγματική δομική απόκλιση** (ένας μόνο λανθάνων παράγοντας δεν συλλαμβάνει τέλεια
+  τη συν-διακύμανση NVDA/AAPL/MSFT) και το TLI είναι κάτω από το 0.95. Δύο επιμέρους παράγοντες:
+  (α) με df = `r b5_df` (πολύ λίγοι βαθμοί ελευθερίας) ο RMSEA είναι γνωστό ότι
+  **υπερεκτιμάται** [@kenny2015]·
+  (β) το μεγάλο n κάνει το **χ²-test** να απορρίπτει ακόμη και μικρές αποκλίσεις (αυτό αφορά μόνο
+  το χ², όχι τον RMSEA). Σημειώνεται επίσης ότι ο εκτιμητής εκπέμπει προειδοποίηση οριακής
+  ταυτοποίησης (μη θετικά ορισμένος πίνακας συνδιακύμανσης παραμέτρων), συμβατή με τη
+  σχεδόν-τέλεια συγγραμμικότητα των τριών δεικτών.
+* **Επεκτάσεις:** Ένα πιο σύνθετο SEM θα μπορούσε να ενσωματώσει και άλλους λανθάνοντες
+  παράγοντες (FinFactor, HealthFactor, CommFactor) και να ελέγξει την υπόθεση ενός
+  γενικευμένου «MarketFactor». Εδώ διατηρούμε τη μινιμαλιστική μορφή που ορίζει η εκφώνηση.
+
+---
+
+# Μέρος Γ — Σύγκριση και Συμπεράσματα
+
+## Γ1. Συγκεντρωτικός Πίνακας Σύγκρισης {#c1}
+
+```{r c1-compare}
+# Βασικά συνοπτικά μέτρα από κάθε προσέγγιση
+r2_classical <- summary(lm_step)$r.squared
+adj_classical<- summary(lm_step)$adj.r.squared
+n_sig_classical <- sum(summary(lm_step)$coefficients[-1, "Pr(>|t|)"] < 0.05)
+
+r2_mid    <- summary(model_mid)$r.squared
+adj_mid   <- summary(model_mid)$adj.r.squared
+n_sig_mid <- sum(summary(model_mid)$coefficients[-1, "Pr(>|t|)"] < 0.05)
+
+if (!is.null(model_rad)) {
+  r2_rad    <- summary(model_rad)$r.squared
+  adj_rad   <- summary(model_rad)$adj.r.squared
+  n_sig_rad <- sum(summary(model_rad)$coefficients[-1, "Pr(>|t|)"] < 0.05)
+} else {
+  r2_rad <- NA; adj_rad <- NA; n_sig_rad <- NA
+}
+
+comp <- data.frame(
+  Προσέγγιση         = c("Κλασική (A5, stepwise)", "Διαστηματική mid (B2)", "Διαστηματική rad (B2)"),
+  R2                 = round(c(r2_classical,  r2_mid,  r2_rad),  4),
+  Adj_R2             = round(c(adj_classical, adj_mid, adj_rad), 4),
+  N_significant_Vars = c(n_sig_classical, n_sig_mid, n_sig_rad),
+  Ερμηνευσιμότητα    = c("Υψηλή", "Υψηλή",
+                         ifelse(is.na(r2_rad) || r2_rad < 0.05, "Χαμηλή", "Μέτρια–υψηλή"))
+)
+ktab(comp, digits = 4, caption = "Πίνακας Γ1.1 — Συγκριτικός πίνακας τριών προσεγγίσεων.",
+     row.names = FALSE)
+```
+
+## Γ2. Ερμηνεία Αποτελεσμάτων {#c2}
+
+* **Ποιοι τομείς/μετοχές είναι σημαντικοί στην κλασική παλινδρόμηση;**
+  Το stepwise μοντέλο (A5) διατηρεί τις: `r paste(a5_sel, collapse = ", ")`. Πρόκειται κατά
+  κύριο λόγο για μετοχές που είναι συστατικά του δείκτη, σύμφωνα με την κατασκευή του DJIA ως
+  **price-weighted average** 30 μετοχών. Οι μετοχές εκτός δείκτη
+  (`r paste(non_dow, collapse = ", ")`) τείνουν να εμφανίζουν μικρότερους ή μη-σημαντικούς
+  συντελεστές.
+
+* **Αλλάζει η εικόνα όταν δουλεύουμε με τα `mid`;**
+  Σχεδόν καθόλου. Το `mid` αποτελεί ακριβώς το μέσο όρο του ενδοημερήσιου
+  διαστήματος και είναι **σχεδόν ταυτόσημο** με την Close-to-Close απόδοση
+  όταν η ημερήσια κίνηση είναι περίπου συμμετρική. Συνεπώς, τα ίδια ζεύγη
+  μετοχών παραμένουν σημαντικά και οι συντελεστές έχουν παρόμοιο μέγεθος και
+  πρόσημο.
+
+* **Τι μας λέει η ανάλυση `rad` για την αστάθεια;**
+  Στο συγκεκριμένο δείγμα (2021–2025) το R² του rad μοντέλου είναι **`r round(b2_r2_rad, 3)`**,
+  που υποδηλώνει έναν **ισχυρό κοινό παράγοντα αστάθειας** (market-wide volatility) στο
+  cross-section. **Δεν** πρέπει όμως να ερμηνευτεί ως «γραμμική προβλεψιμότητα»: όπως δείξαμε
+  στη B2, το R² είναι κατά κύριο λόγο **μηχανικό** (R² ≈ `r round(b2_r2_rad_mean, 3)` προκύπτει
+  ήδη από τον απλό μέσο όρο των επιμέρους rad — ταυτότητα άθροισης), και η OLS συμπερασματολογία
+  είναι άκυρη λόγω αυτοσυσχέτισης (υπό HAC οι σημαντικές μεταβλητές πέφτουν σε
+  `r b2_nsig_rad_hac`). Η ορθή μοντελοποίηση της αστάθειας απαιτεί δυναμικά υποδείγματα (GARCH).
+
+  Παρ' όλα αυτά, η ίδια η **ύπαρξη** ενός μετρήσιμου κοινού παράγοντα αστάθειας είναι κάτι
+  **που η κλασική Close-to-Close ανάλυση δεν μπορεί να αποκαλύψει** (δεν μετράει αστάθεια),
+  οπότε η συνεισφορά της διαστηματικής μεθοδολογίας παραμένει σαφής.
+
+  Αξίζει να σημειωθεί ότι, σε διαφορετική περίοδο (π.χ. ήρεμη bull market),
+  η διακύμανση του $Y_{rad}$ ίσως είναι ακόμη μικρότερη και η ερμηνευτική
+  ισχύς του μοντέλου να εξαφανιστεί — όπως προειδοποιεί η εκφώνηση. Στη δική
+  μας περίπτωση, η μεγάλη μακροοικονομική αστάθεια της πενταετίας (πανδημία,
+  inflation cycle, geopolitical shocks, AI rally) διατήρησε αρκετό σήμα ώστε
+  η σχέση να είναι ανιχνεύσιμη.
+
+## Γ3. Κριτική και Περιορισμοί {#c3}
+
+* **Υπόθεση γραμμικότητας:** Όλα τα μοντέλα που εφαρμόστηκαν είναι γραμμικά. Στην
+  πραγματικότητα, η σχέση μεταξύ μεμονωμένων μετοχών και του δείκτη DIA μπορεί
+  να μην είναι αυστηρά γραμμική, ειδικά σε ακραίες ημέρες (μη-γραμμικά
+  διαμετάφραστα, jump-diffusion processes, regime-switching).
+* **Stepwise και post-selection inference:** Τα p-values και το R² του stepwise μοντέλου
+  υπολογίζονται στο ίδιο δείγμα που επέλεξε τις μεταβλητές, άρα είναι ελαφρώς
+  **υπερ-αισιόδοξα** — το stepwise δίνει ένα καλό περιγραφικό υπόδειγμα, όχι «το αληθινό»
+  (όπως προειδοποιεί και το υλικό του μαθήματος). Η εκτός-δείγματος σταθερότητα (Δ7, Δ11)
+  μετριάζει εν μέρει την ανησυχία αυτή.
+* **Μη-κανονικότητα και ετεροσκεδαστικότητα:** Όπως δείξαμε στις ενότητες A1 και
+  A5, οι αποδόσεις δεν είναι κανονικές και τα residuals παρουσιάζουν
+  ετεροσκεδαστικότητα. Σε μια πληρέστερη μελέτη θα έπρεπε:
+    - Είτε να εφαρμοστούν **robust standard errors** (HC3 sandwich estimator).
+    - Είτε να προσαρμοστούν **GARCH(1,1)** στις σειρές για ρητή μοντελοποίηση
+      της δομής αστάθειας.
+* **Στατικός χρονικός ορίζοντας:** Χρησιμοποιήσαμε όλη την πενταετία 2021–2025.
+  Οι σχέσεις μεταξύ μετοχών δεν είναι σταθερές στο χρόνο. Μια rolling-window
+  ή Bayesian dynamic linear model θα αποκάλυπτε χρονικές αλλαγές.
+* **Μη-εκτεταμένη επεξεργασία outliers:** Δεν αφαιρέθηκαν ακραίες παρατηρήσεις.
+  Στην πράξη θα ήταν δόκιμη η χρήση **robust regression** (M-estimators) για
+  να μη δεσπόζουν λίγες ακραίες παρατηρήσεις.
+* **Περιορισμοί της Interval προσέγγισης:**
+    - Η αναπαράσταση (mid, rad) χάνει την πληροφορία **της κατανομής εντός του
+      διαστήματος** (π.χ. αν η μετοχή πέρασε περισσότερο χρόνο κοντά στο High
+      ή στο Low).
+    - Η CRM των Lima Neto & de Carvalho (2008), που εφαρμόσαμε, προϋποθέτει
+      **ανεξάρτητη εκτίμηση** των δύο εξισώσεων (mid και rad)· η αρχική Center
+      Method των Billard & Diday (2000) προσαρμόζει μόνο την εξίσωση των κέντρων.
+      Σύγχρονες παραλλαγές (Constrained Interval Regression, MinMax method)
+      επιβάλλουν περιορισμούς ώστε το προβλεπόμενο διάστημα να μη γίνεται ανάστροφο.
+    - Δεν υπάρχει καθιερωμένη Interval FA με αναπαραγώγιμη υλοποίηση
+      (βλ. ενότητα B4).
+* **Τι θα κάναμε διαφορετικά:**
+    1. Θα ενσωματώναμε **GARCH** για ρητή μοντελοποίηση `Y_rad`
+       *(υλοποιείται στο Παράρτημα Δ9)*.
+    2. Θα δοκιμάζαμε **MinMax** ή **Constrained Center & Range Method**
+       [@limaneto2010] για interval regression που σέβεται την περιοριστική
+       σχέση `rad ≥ 0` *(η CCRM υλοποιείται στο Παράρτημα Δ5)*.
+    3. Θα προσθέταμε **μακρο-ελεγχόμενες** μεταβλητές (επιτόκια, VIX, oil
+       prices) για βελτιωμένη ερμηνεία.
+    4. Θα εφαρμόζαμε **SEM με πολλαπλούς λανθάνοντες παράγοντες** ανά τομέα
+       *(υλοποιείται στο Παράρτημα Δ8, όπου αναδεικνύεται και ο περιορισμός
+       ταυτοποίησης)*.
+
+---
+
+# Σύνοψη – Συμπεράσματα
+
+Η εργασία αυτή υλοποίησε ένα ολοκληρωμένο πειραματικό πλαίσιο σύγκρισης κλασικής
+και διαστηματικής στατιστικής μοντελοποίησης για τη σχέση του δείκτη DIA με 15
+βασικές αμερικανικές μετοχές. Τα κύρια ευρήματα είναι:
+
+1. Η **παραγοντική δομή** των μετοχών αναδεικνύει 3 παράγοντες — έναν ευρύ
+   mega-cap growth (τεχνολογία/επικοινωνίες/καταναλωτικά), έναν στενό τραπεζικό
+   (BAC, JPM) και έναν αμυντικό/υγείας — με τη συν-κίνηση των αποδόσεων να **μην
+   ταυτίζεται πάντα με τον ονομαστικό κλάδο** (π.χ. η V κινείται με το growth, η HD
+   με τις αμυντικές). Η δομή παραμένει σταθερή σε κλασική και διαστηματική (mid) προσέγγιση.
+2. Η **κλασική γραμμική παλινδρόμηση** εξηγεί άριστα τη συμπεριφορά του DIA
+   χρησιμοποιώντας τις μετοχές που πραγματικά συμμετέχουν στον δείκτη.
+3. Η **διαστηματική παλινδρόμηση στα κέντρα** (μέθοδος Center-and-Range, Lima Neto &
+   de Carvalho 2008, γενίκευση της Billard & Diday 2000) δίνει ουσιαστικά ίδια
+   αποτελέσματα στο `mid`, επιβεβαιώνοντάς την ως αξιόπιστη και ερμηνεύσιμη.
+4. Η **παλινδρόμηση στα `rad`** αποκαλύπτει έναν **ισχυρό κοινό παράγοντα ενδοημερήσιας
+   αστάθειας** (market-wide volatility) — κάτι που η κλασική Close-to-Close ανάλυση δεν
+   μπορεί να μετρήσει. Το υψηλό R² (= `r round(b2_r2_rad, 3)`) είναι ωστόσο **κυρίως μηχανικό**
+   (≈ `r round(b2_r2_rad_mean, 3)` προκύπτει από τον μέσο όρο των συστατικών — ταυτότητα
+   άθροισης) και η OLS συμπερασματολογία είναι άκυρη λόγω αυτοσυσχέτισης· επομένως **δεν**
+   πρόκειται για γνήσια «προβλεψιμότητα» της αστάθειας, η οποία απαιτεί δυναμικά υποδείγματα
+   (GARCH).
+5. Το **SEM (bonus B5)** πιστοποιεί την ύπαρξη ενός λανθάνοντος «τεχνολογικού
+   παράγοντα» που επηρεάζει σημαντικά την κεντρική απόδοση του DIA.
+
+---
+
+# Παράρτημα — Επεκτάσεις πέραν της εκφώνησης
+
+Οι παρακάτω αναλύσεις **δεν απαιτούνται** από την εκφώνηση (η βαθμολογούμενη δομή A–C είναι
+ήδη πλήρης)· προστίθενται επειδή εφαρμόζονται στο **υλικό του μαθήματος** (Διάλεξη 13 και 14,
+υποδειγματική εργασία) και εμπλουτίζουν την ανάλυση με μη-γραμμική και οπτική οπτική γωνία.
+
+## Δ1. Δέντρο Παλινδρόμησης — Σημαντικότητα Μεταβλητών για τον DIA {#d1}
+
+Στη **Διάλεξη 13** (§«Εύρεση υποδείγματος») χρησιμοποιείται δέντρο παλινδρόμησης (`rpart`) για
+**μη-γραμμική** διερεύνηση και κατάταξη της σημαντικότητας των μεταβλητών — εργαλείο που
+συμπληρώνει τη γραμμική stepwise επιλογή της A5. Εφαρμόζουμε την ίδια μεθοδολογία στον DIA:
+προσαρμόζουμε δέντρο και επιλέγουμε το `cp` με το ελάχιστο σφάλμα διασταύρωσης
+(εδώ το ελάχιστο xerror εμφανίζεται στο όριο του προεπιλεγμένου πλέγματος cp = 0.01,
+οπότε το κλάδεμα διατηρεί ολόκληρο το δέντρο των 11 φύλλων)
+(cross-validation), και αναφέρουμε τη σχετική σημαντικότητα κάθε μετοχής.
+
+```{r ext-tree, fig.height=5, fig.cap="Δέντρο παλινδρόμησης για τον DIA (μέθοδος anova· cp στο ελάχιστο xerror, που συμπίπτει με το πλήρες δέντρο)."}
+set.seed(1125886)
+tree_data <- data.frame(DIA = Y_classical, X_classical)
+tree_full <- rpart(DIA ~ ., data = tree_data, method = "anova")
+best_cp   <- tree_full$cptable[which.min(tree_full$cptable[, "xerror"]), "CP"]
+tree      <- prune(tree_full, cp = best_cp)
+rpart.plot(tree, type = 4, fallen.leaves = FALSE, box.palette = "Blues",
+           main = "Δ1.1 — Δέντρο παλινδρόμησης για τον DIA")
+```
+
+```{r ext-tree-importance}
+vi <- round(100 * prop.table(tree$variable.importance), 2)
+ktab(data.frame(Μετοχή = names(vi), `Σημαντικότητα (%)` = as.numeric(vi),
+                check.names = FALSE),
+     caption = "Πίνακας Δ1.1 — Σχετική σημαντικότητα μεταβλητών (δέντρο παλινδρόμησης).",
+     row.names = FALSE)
+```
+
+```{r ext-tree-facts, include=FALSE}
+d1_top   <- names(sort(tree$variable.importance, decreasing = TRUE))[1:3]
+d1_inA5  <- intersect(d1_top, a5_sel)
+```
+
+#### Σχολιασμός Δ1
+
+* Οι τρεις μετοχές με τη μεγαλύτερη σημαντικότητα στο δέντρο είναι **`r paste(d1_top, collapse=", ")`**.
+  `r if (length(d1_inA5) == length(d1_top)) "Και οι τρεις" else paste(length(d1_inA5), "από τις 3")`
+  ανήκουν επίσης στο stepwise γραμμικό μοντέλο (A5), γεγονός που **διασταυρώνει** τα δύο
+  ανεξάρτητα εργαλεία: η γραμμική (A5) και η μη-γραμμική (δέντρο) προσέγγιση συμφωνούν στις
+  βαρύτερες μετοχές του δείκτη. Έλεγχος ευαισθησίας: με πυκνότερο πλέγμα (cp = 0.001,
+  κλάδεμα min-xerror ή κανόνας 1-SE) η κατάταξη JPM > V > BAC > MSFT παραμένει αμετάβλητη.
+* Το δέντρο, σε αντίθεση με την παλινδρόμηση, αποτυπώνει **κατώφλια και αλληλεπιδράσεις** (π.χ.
+  διαφορετική συμπεριφορά σε ημέρες μεγάλων κινήσεων) — απαντώντας εν μέρει στον περιορισμό
+  μη-γραμμικότητας που επισημάναμε στη Γ3.
+
+## Δ2. PCA Biplot {#d2}
+
+Στη **Διάλεξη 14** το biplot αποτελεί τυποποιημένη οπτικοποίηση της PCA (ταυτόχρονη προβολή
+παρατηρήσεων και φορτίσεων). Το κατασκευάζουμε απευθείας από το αντικείμενο `prcomp` (χωρίς
+εξωτερικό πακέτο), προβάλλοντας τις φορτίσεις των μετοχών ως διανύσματα πάνω στο νέφος των
+ημερήσιων παρατηρήσεων στο επίπεδο PC1–PC2.
+
+```{r ext-biplot, fig.height=5.2, fig.cap="PCA biplot (PC1–PC2): νέφος ημερών + διανύσματα φορτίσεων των μετοχών."}
+scores      <- as.data.frame(pca_classical$x[, 1:2])
+load_arrows <- as.data.frame(pca_classical$rotation[, 1:2])
+load_arrows$var <- rownames(load_arrows)
+arrow_scale <- 0.9 * max(abs(scores[, 1:2])) / max(abs(load_arrows[, 1:2]))
+v1 <- 100 * eig_vals[1] / sum(eig_vals)
+v2 <- 100 * eig_vals[2] / sum(eig_vals)
+# μικρές χειροκίνητες μετατοπίσεις ετικετών στα 2 στριμωγμένα ζεύγη (BAC-JPM, AMZN-GOOGL),
+# ώστε να φαίνονται και οι 15 ετικέτες χωρίς εξωτερικό πακέτο
+load_arrows$dy <- 0
+load_arrows[c("BAC", "JPM"),    "dy"] <- c( 0.9, -0.9)
+load_arrows[c("AMZN", "GOOGL"), "dy"] <- c( 0.9, -0.9)
+ggplot() +
+  geom_point(data = scores, aes(PC1, PC2),
+             alpha = 0.10, colour = "#56B4E9", size = 0.7) +
+  geom_segment(data = load_arrows,
+               aes(x = 0, y = 0, xend = PC1 * arrow_scale, yend = PC2 * arrow_scale),
+               arrow = arrow(length = grid::unit(0.18, "cm")),
+               colour = "#D55E00", linewidth = 0.5) +
+  geom_text(data = load_arrows,
+            aes(x = PC1 * arrow_scale * 1.08, y = PC2 * arrow_scale * 1.08 + dy, label = var),
+            colour = "#D55E00", size = 3) +
+  coord_fixed() +
+  labs(title = "Δ2.1 — PCA biplot (κλασικές αποδόσεις)",
+       x = sprintf("PC1 (%.1f%%)", v1), y = sprintf("PC2 (%.1f%%)", v2)) +
+  theme_paper()
+```
+
+#### Σχολιασμός Δ2
+
+* Σχεδόν **όλα τα διανύσματα δείχνουν προς την ίδια κατεύθυνση στον άξονα PC1**, οπτικοποιώντας
+  τον κοινό *market factor* (PC1, `r round(v1, 1)`%): οι μετοχές κινούνται μαζί.
+* Ο άξονας **PC2** (`r round(v2, 1)`%) διαχωρίζει τις growth/tech μετοχές από τις αμυντικές, σε
+  πλήρη συμφωνία με την ερμηνεία της A4 και τη δομή παραγόντων της A3.
+
+---
+
+## Δ3. Διμεταβλητή Ανάλυση DIA–Μετοχής {#d3}
+
+Ο υποχρεωτικός κατάλογος προ-μοντελοποίησης (Διάλεξη 13, «Μέρος 2») προβλέπει **διμεταβλητή
+διερεύνηση** κάθε σχέσης Y–X *πριν* από την πολυμεταβλητή ανάλυση: scatter plot με loess (για
+μη-γραμμικότητα) και συντελεστές **Pearson** (γραμμική) & **Spearman** (μονότονη) συσχέτισης.
+
+```{r ext-bivar, fig.height=7.5, fig.cap="DIA vs κάθε μετοχή: loess (μπλε) και γραμμική (κόκκινη) προσαρμογή."}
+biv <- do.call(rbind, lapply(colnames(X_classical), function(nm)
+  data.frame(X = X_classical[[nm]], DIA = Y_classical, Ticker = nm)))
+biv$Ticker <- factor(biv$Ticker, levels = colnames(X_classical))
+ggplot(biv, aes(X, DIA)) +
+  geom_point(alpha = 0.06, colour = "#56B4E9", size = 0.5) +
+  geom_smooth(method = "loess", se = FALSE, colour = "#0072B2", linewidth = 0.5) +
+  geom_smooth(method = "lm",    se = FALSE, colour = "#D55E00", linewidth = 0.5) +
+  facet_wrap(~ Ticker, scales = "free_x", ncol = 4) +
+  labs(title = "Δ3.1 — DIA vs κάθε μετοχή (loess μπλε, γραμμικό κόκκινο)",
+       x = "Ημερήσια απόδοση μετοχής", y = "Ημερήσια απόδοση DIA") +
+  theme_paper()
+```
+
+```{r ext-bivar-cor}
+biv_cor <- data.frame(
+  Μετοχή   = colnames(X_classical),
+  Pearson  = sapply(X_classical, function(x) cor(x, Y_classical)),
+  Spearman = sapply(X_classical, function(x) cor(x, Y_classical, method = "spearman")),
+  check.names = FALSE)
+biv_cor <- biv_cor[order(-biv_cor$Pearson), ]
+ktab(biv_cor, digits = 3, row.names = FALSE,
+     caption = "Πίνακας Δ3.1 — Συσχέτιση DIA–μετοχής (Pearson και Spearman).")
+```
+
+```{r ext-bivar-facts, include=FALSE}
+d3_dmax  <- max(abs(biv_cor$Pearson - biv_cor$Spearman))
+d3_top   <- biv_cor$Μετοχή[1]
+```
+
+#### Σχολιασμός Δ3
+
+* Οι γραμμές loess (μπλε) είναι σχεδόν ευθείες και σχεδόν ταυτίζονται με τη γραμμική προσαρμογή
+  (κόκκινη): **οι σχέσεις DIA–μετοχής είναι κατά βάση γραμμικές**, γεγονός που δικαιολογεί εκ των
+  προτέρων τη χρήση γραμμικών υποδειγμάτων στη A5/B2.
+* Pearson και Spearman **σχεδόν συμπίπτουν** (μέγιστη απόκλιση `r round(d3_dmax, 3)`), επιβεβαιώνοντας
+  την απουσία ισχυρής μονότονης-μη-γραμμικής δομής. Η ισχυρότερη συσχέτιση με τον DIA είναι της
+  **`r d3_top`**.
+
+## Δ4. Παραγοντική Ανάλυση σε Βάθος: Πλάγια Περιστροφή, Αξιοπιστία, Παλινδρόμηση Σκορ {#d4}
+
+### Πλάγια (oblique) περιστροφή και συσχέτιση παραγόντων
+
+```{r ext-fa-oblique}
+fa_obl <- psych::fa(X_classical, nfactors = 3, fm = "pa",
+                    rotate = "oblimin", scores = "regression")
+cat("Πίνακας συσχέτισης παραγόντων (oblimin — επιτρέπει συσχετισμένους παράγοντες):\n")
+print(round(fa_obl$Phi, 3))
+```
+
+### Αξιοπιστία (Cronbach's α) ανά παράγοντα
+
+```{r ext-reliability}
+# Ομαδοποίηση από τη μέγιστη φόρτιση varimax (A3): fa_groups από το chunk a3-facts
+alpha_by_factor <- sapply(fa_groups, function(grp) {
+  if (length(grp) < 2) return(NA_real_)
+  suppressWarnings(suppressMessages(
+    psych::alpha(X_classical[, grp], check.keys = TRUE)$total$raw_alpha))
+})
+ktab(data.frame(Παράγοντας = paste0("F", seq_along(alpha_by_factor)),
+                Μετοχές = vapply(fa_groups, paste, character(1), collapse = ", "),
+                `Cronbach α` = round(alpha_by_factor, 3), check.names = FALSE),
+     caption = "Πίνακας Δ4.1 — Εσωτερική συνέπεια (Cronbach's α) ανά παράγοντα.",
+     row.names = FALSE)
+```
+
+### Παλινδρόμηση στα factor scores
+
+```{r ext-fa-scores}
+fa_sc <- as.data.frame(fa_model$scores)
+names(fa_sc) <- paste0("F", seq_len(ncol(fa_sc)))
+fs_model <- lm(Y_classical ~ ., data = fa_sc)
+summary(fs_model)
+```
+
+```{r ext-fa-facts, include=FALSE}
+d4_phimax <- max(abs(fa_obl$Phi[upper.tri(fa_obl$Phi)]))
+d4_fsr2   <- summary(fs_model)$r.squared
+```
+
+#### Σχολιασμός Δ4
+
+* **Πλάγια περιστροφή:** Η μέγιστη συσχέτιση μεταξύ παραγόντων (oblimin) είναι
+  `r round(d4_phimax, 2)`. `r if (d4_phimax < 0.32) "Είναι μικρή (< 0.32), οπότε η ορθογώνια varimax της A3 είναι απολύτως δικαιολογημένη — οι παράγοντες είναι σχεδόν ασυσχέτιστοι." else "Είναι μη-αμελητέα, ένδειξη ότι οι παράγοντες δεν είναι πλήρως ανεξάρτητοι (η oblimin δίνει πιο ρεαλιστική εικόνα από τη varimax)."`
+* **Αξιοπιστία (Cronbach's α):** Εδώ το α δεν έχει την κλασική ψυχομετρική έννοια — μετρά τη
+  **μέση εντός-ομάδας συν-κίνηση** των αποδόσεων (είναι μονότονη συνάρτηση της μέσης συσχέτισης
+  των μελών). Οι τιμές **διαφέρουν ουσιωδώς**: ο ευρύς growth παράγοντας έχει υψηλό α, αλλά ο
+  **αμυντικός/υγείας παράγοντας έχει χαμηλό α = `r round(min(alpha_by_factor, na.rm = TRUE), 3)`** —
+  επιβεβαιώνοντας (όπως και η A3) ότι πρόκειται για **ετερογενή ομάδα** (HD + τρεις διαφορετικές
+  μετοχές υγείας) με ασθενή κοινή κίνηση. Επιπλέον, το α ενός **διμελούς** παράγοντα (BAC, JPM)
+  είναι εγγενώς ασταθές και πρέπει να ερμηνεύεται με επιφύλαξη.
+* **Παλινδρόμηση σκορ:** Με μόλις 3 **σχεδόν ορθογώνια** factor scores ως παλινδρομητές
+  (regression scores· η ορθογωνιότητα δεν είναι ακριβής — μέγιστη $|r|$ μεταξύ σκορ $\approx$ 0.10),
+  το R² είναι **`r round(d4_fsr2, 3)`** (έναντι `r round(summary(lm_step)$r.squared, 3)` του
+  πλήρους stepwise μοντέλου A5) — αξιοσημείωτη συμπύκνωση: τρεις παράγοντες συλλαμβάνουν το
+  μεγαλύτερο μέρος της ερμηνευτικής ισχύος των 15 μετοχών. Σημειώνεται ότι τα τυπικά σφάλματα
+  της παλινδρόμησης δεν ενσωματώνουν την αβεβαιότητα εκτίμησης των σκορ, οπότε ερμηνεύονται
+  συντηρητικά.
+
+## Δ5. Περιορισμένη Μέθοδος Κέντρου-και-Εύρους (CCRM) {#d5}
+
+Η μη-περιορισμένη CRM (B2) μπορεί θεωρητικά να παράγει **αρνητικό** προβλεπόμενο ημι-εύρος. Η
+**Constrained CRM** [@limaneto2010] επαναπροσαρμόζει την εξίσωση του εύρους με
+**μη-αρνητικά ελάχιστα τετράγωνα** (NNLS), εγγυώμενη $\hat{\text{rad}} \ge 0$.
+
+```{r ext-ccrm}
+Xr_mat <- as.matrix(cbind(Intercept = 1, X_rad))
+nn <- nnls::nnls(Xr_mat, Y_rad)                       # συντελεστές >= 0
+yhat_mid_h   <- as.numeric(predict(model_mid))
+yhat_rad_crm <- if (!is.null(model_rad)) as.numeric(predict(model_rad)) else rep(mean(Y_rad), length(Y_rad))
+yhat_rad_ccrm <- as.numeric(Xr_mat %*% nn$x)
+
+obs_L <- Y_mid - Y_rad; obs_U <- Y_mid + Y_rad; w_obs <- obs_U - obs_L
+ival_metrics <- function(yhat_rad) {
+  pL <- yhat_mid_h - yhat_rad; pU <- yhat_mid_h + yhat_rad
+  overlap <- pmax(0, pmin(obs_U, pU) - pmax(obs_L, pL))
+  c(RMSE_L     = sqrt(mean((obs_L - pL)^2)),
+    RMSE_U     = sqrt(mean((obs_U - pU)^2)),
+    Κάλυψη     = mean(overlap / w_obs),
+    Efficiency = mean((pU - pL) / w_obs),
+    `Έγκυρα %` = 100 * mean(pU >= pL))
+}
+tab_ccrm <- rbind(CRM = ival_metrics(yhat_rad_crm), CCRM = ival_metrics(yhat_rad_ccrm))
+ktab(tab_ccrm, digits = 4,
+     caption = "Πίνακας Δ5.1 — Σύγκριση CRM (μη περιορισμένη) vs CCRM (rad ≥ 0).")
+```
+
+```{r ext-ccrm-facts, include=FALSE}
+d5_negcoef <- sum(coef(model_rad) < 0)
+d5_negpred <- sum(yhat_rad_crm < 0)
+```
+
+#### Σχολιασμός Δ5
+
+* Στο μοντέλο εύρους της CRM, **`r d5_negcoef`**
+  `r if (d5_negcoef == 1) "συντελεστής είναι αρνητικός" else "συντελεστές είναι αρνητικοί"`, αλλά οι
+  προβλεπόμενες τιμές rad είναι αρνητικές σε **`r d5_negpred`** μόνο ημέρες — δηλαδή η μη
+  περιορισμένη CRM παράγει ήδη `r if (d5_negpred == 0) "100%" else ""` έγκυρα διαστήματα εδώ.
+* Ο περιορισμός $\hat{\text{rad}} \ge 0$ είναι επομένως **μη-δεσμευτικός σε επίπεδο πρόβλεψης**
+  (0 αρνητικά προβλεπόμενα rad), αλλά **δεσμευτικός σε επίπεδο συντελεστών**: η NNLS μηδενίζει
+  9 από τους 16 συντελεστές. Η συνέπεια φαίνεται στον Πίνακα Δ5.1: η CCRM παράγει **~17%
+  ευρύτερα διαστήματα από τα παρατηρούμενα** (Efficiency: CRM 1.070, CCRM 1.171 — δηλαδή ~9.5%
+  ευρύτερα από τη CRM) με ελαφρώς χειρότερη ακρίβεια ορίων, και η
+  υψηλότερη κάλυψή της είναι **μηχανικό παρεπόμενο του μεγαλύτερου πλάτους** (trade-off
+  κάλυψης–ακρίβειας), όχι κέρδος ακρίβειας. Το πρακτικό συμπέρασμα: εδώ η CRM επαρκεί· σε
+  δείγματα όπου η CRM θα παραβίαζε το rad ≥ 0, η εγγύηση εγκυρότητας της CCRM γίνεται το
+  κρίσιμο πλεονέκτημα που δικαιολογεί το κόστος αυτό.
+
+## Δ6. Εύρωστη Συμπερασματολογία & Διαγνωστικοί Έλεγχοι Χρονοσειράς {#d6}
+
+Επειδή η A5 εντόπισε **ετεροσκεδαστικότητα** (Cook-Weisberg score test, $p \approx 10^{-6}$),
+επαναϋπολογίζουμε
+τα p-values με **εύρωστους** εκτιμητές διακύμανσης: HC3 (White) για ετεροσκεδαστικότητα και
+Newey-West (HAC) για ετεροσκεδαστικότητα + αυτοσυσχέτιση.
+
+```{r ext-robust}
+ct_ols <- summary(lm_step)$coefficients
+ct_hc3 <- lmtest::coeftest(lm_step, vcov. = sandwich::vcovHC(lm_step, type = "HC3"))
+ct_hac <- lmtest::coeftest(lm_step, vcov. = sandwich::NeweyWest(lm_step, lag = 5, prewhite = FALSE))
+rob <- data.frame(
+  Μεταβλητή   = sub("\\(Intercept\\)", "Σταθερά", rownames(ct_ols)),
+  Συντελεστής = round(ct_ols[, "Estimate"], 4),
+  `p_OLS`     = signif(ct_ols[, "Pr(>|t|)"], 2),
+  `p_HC3`     = signif(ct_hc3[, "Pr(>|t|)"], 2),
+  `p_HAC`     = signif(ct_hac[, "Pr(>|t|)"], 2),
+  check.names = FALSE)
+ktab(rob, digits = 4, row.names = FALSE,
+     caption = "Πίνακας Δ6.1 — Εύρωστη συμπερασματολογία: p-values OLS vs HC3 vs Newey-West HAC.")
+```
+
+```{r ext-diagnostics}
+res <- as.numeric(resid(lm_step))
+cat("Ljung-Box (αυτοσυσχέτιση καταλοίπων, lag 10):\n")
+print(Box.test(res, lag = 10, type = "Ljung-Box"))
+
+# ARCH-LM (δεσμευμένη ετεροσκεδαστικότητα - ARCH effects), χειροκίνητα:
+p_arch <- 5; emb <- embed(res^2, p_arch + 1)
+arch_fit <- lm(emb[, 1] ~ emb[, -1])
+arch_LM  <- nrow(emb) * summary(arch_fit)$r.squared
+cat(sprintf("\nARCH-LM (lag %d): LM = %.1f, df = %d, p = %.3g\n",
+            p_arch, arch_LM, p_arch, pchisq(arch_LM, p_arch, lower.tail = FALSE)))
+
+cat("\nADF test (H0: μοναδιαία ρίζα / μη στασιμότητα):\n")
+print(suppressWarnings(tseries::adf.test(Y_classical)))
+cat("\nKPSS test (H0: στασιμότητα):\n")
+print(suppressWarnings(tseries::kpss.test(Y_classical)))
+```
+
+```{r ext-diag-facts, include=FALSE}
+d6_lb   <- Box.test(res, lag = 10, type = "Ljung-Box")$p.value
+d6_arch <- pchisq(nrow(embed(res^2, 6)) * summary(lm(embed(res^2,6)[,1] ~ embed(res^2,6)[,-1]))$r.squared, 5, lower.tail = FALSE)
+d6_adf  <- suppressWarnings(tseries::adf.test(Y_classical)$p.value)
+d6_nrob <- sum(ct_ols[-1, "Pr(>|t|)"] < 0.05) - sum(ct_hac[-1, "Pr(>|t|)"] < 0.05)
+```
+
+#### Σχολιασμός Δ6
+
+* **Εύρωστα p-values:** Παρά την ετεροσκεδαστικότητα, τα συμπεράσματα είναι **σταθερά**:
+  η αλλαγή από OLS σε HAC μεταβάλλει το πλήθος σημαντικών συντελεστών (α=0.05) κατά
+  `r abs(d6_nrob)` — οι βαρύτερες μετοχές παραμένουν ισχυρά σημαντικές με εύρωστους εκτιμητές
+  (lag = 5 ≈ μία εβδομάδα συναλλαγών· ο αυτόματος κανόνας Newey-West δίνει ~7, με πρακτικά
+  ταυτόσημα p-values).
+* **Ljung-Box** (p = `r signif(d6_lb, 3)`): `r if (d6_lb < 0.05) "υπάρχει στατιστικά σημαντική αυτοσυσχέτιση καταλοίπων (αναμενόμενη σε ημερήσιες σειρές· δικαιολογεί τους HAC εκτιμητές)" else "δεν εντοπίζεται σημαντική αυτοσυσχέτιση καταλοίπων"`.
+* **ARCH-LM** (p = `r signif(d6_arch, 3)`): `r if (d6_arch < 0.05) "ισχυρές ARCH επιδράσεις — δεσμευμένη ετεροσκεδαστικότητα (volatility clustering), που δικαιολογεί μοντέλα τύπου GARCH ως μελλοντική επέκταση" else "δεν εντοπίζονται ARCH επιδράσεις"`.
+* **Στασιμότητα:** Το ADF απορρίπτει τη μοναδιαία ρίζα (p `r if (d6_adf <= 0.01) "< 0.01" else paste("=", signif(d6_adf, 3))`,
+  στο όριο αναφοράς του ελέγχου) και το KPSS δεν απορρίπτει τη στασιμότητα (p > 0.10) — οι
+  αποδόσεις είναι **στάσιμες**, προϋπόθεση εγκυρότητας της παλινδρόμησης (σε αντίθεση με τις
+  μη-στάσιμες τιμές).
+
+## Δ7. Σταθερότητα Εκτός Δείγματος (Out-of-Sample) {#d7}
+
+**Σημαντική διευκρίνιση:** Η παλινδρόμηση είναι **σύγχρονη** — η απόδοση του DIA την ημέρα $t$
+ερμηνεύεται από τις αποδόσεις των μετοχών την **ίδια** ημέρα $t$. Επειδή ο DIA είναι (κατά
+κατασκευή) σχεδόν ένα σταθμισμένο καλάθι αυτών των μετοχών, αυτό αποτελεί **ανακατασκευή του
+καλαθιού, ΟΧΙ πρόβλεψη**. Το out-of-sample $R^2$ εδώ ελέγχει τη **σταθερότητα της ερμηνευτικής
+σχέσης** (απουσία overfitting) σε χρονολογικά μεταγενέστερα δεδομένα — δεν αποτελεί ισχυρισμό
+προβλεψιμότητας. Χωρίζουμε χρονολογικά (χωρίς ανακάτεμα) σε **80% train / 20% test**.
+
+```{r ext-oos}
+n_obs2 <- length(Y_classical); cut <- floor(0.8 * n_obs2)
+tr <- seq_len(cut); te <- (cut + 1):n_obs2
+oos_one <- function(Y, X) {
+  d <- data.frame(Y = Y, X)
+  m <- lm(Y ~ ., data = d[tr, ]); ph <- predict(m, newdata = d[te, ])
+  sse <- sum((Y[te] - ph)^2); sst <- sum((Y[te] - mean(Y[tr]))^2)
+  c(R2 = 1 - sse / sst, RMSE = sqrt(mean((Y[te] - ph)^2)), MAE = mean(abs(Y[te] - ph)))
+}
+oos <- rbind(`Κλασική`      = oos_one(Y_classical, X_classical),
+             `Διάστημα mid` = oos_one(Y_mid, X_mid),
+             `Διάστημα rad` = oos_one(Y_rad, X_rad))
+ktab(oos, digits = 4,
+     caption = "Πίνακας Δ7.1 — Επίδοση εκτός δείγματος (χρονολογικό 80/20 split).")
+```
+
+```{r ext-oos-plot, fig.height=4, fig.cap="Σύγχρονη ανακατασκευή του DIA εκτός δείγματος (expanding window): ανακατασκευασμένες vs πραγματικές τιμές."}
+dcl <- data.frame(Y = Y_classical, X_classical)
+pred_ew <- vapply(cut:(n_obs2 - 1), function(i) {
+  m <- lm(Y ~ ., data = dcl[seq_len(i), ])
+  as.numeric(predict(m, newdata = dcl[i + 1, , drop = FALSE]))
+}, numeric(1))
+ew_idx <- (cut + 1):n_obs2
+ew_df  <- data.frame(Actual = Y_classical[ew_idx], Predicted = pred_ew)
+ew_rmse <- sqrt(mean((ew_df$Actual - ew_df$Predicted)^2))
+ggplot(ew_df, aes(Actual, Predicted)) +
+  geom_point(alpha = 0.30, colour = "#0072B2", size = 0.8) +
+  geom_abline(slope = 1, intercept = 0, colour = "#D55E00", linetype = 2) +
+  labs(title = sprintf("Δ7.1 — Σύγχρονη ανακατασκευή εκτός δείγματος: RMSE = %.4f", ew_rmse),
+       x = "Πραγματική απόδοση DIA", y = "Ανακατασκευασμένη απόδοση DIA") +
+  theme_paper()
+```
+
+```{r ext-lagged}
+# το ίδιο σχήμα, αλλά με πραγματική υστέρηση 1 ημέρας (X_{t-1} -> Y_t): γνήσια πρόβλεψη
+dlag  <- data.frame(Y = Y_classical[-1], X_classical[-nrow(X_classical), ])
+nL    <- nrow(dlag); cutL <- floor(0.8 * nL)        # δικό του 80/20 split (n-1 γραμμές)
+trL   <- seq_len(cutL); teL <- (cutL + 1):nL
+m_lag <- lm(Y ~ ., data = dlag[trL, ])
+ph_lag <- predict(m_lag, newdata = dlag[teL, ])
+oos_r2_lag <- 1 - sum((dlag$Y[teL] - ph_lag)^2) / sum((dlag$Y[teL] - mean(dlag$Y[trL]))^2)
+cat("OOS R² με ΓΝΗΣΙΑ υστέρηση 1 ημέρας (πραγματική πρόβλεψη):", round(oos_r2_lag, 3), "\n")
+```
+
+```{r ext-oos-facts, include=FALSE}
+d7_r2     <- oos["Κλασική", "R2"]
+d7_r2_lag <- oos_r2_lag
+```
+
+#### Σχολιασμός Δ7
+
+* **Σταθερότητα (σύγχρονη):** Το κλασικό μοντέλο διατηρεί υψηλό out-of-sample $R^2$ =
+  **`r round(d7_r2, 3)`** στο μεταγενέστερο 20% — η ερμηνευτική σχέση είναι **σταθερή και δεν
+  οφείλεται σε overfitting**. Τα μοντέλα `mid` δίνουν σχεδόν ταυτόσημη επίδοση.^[Το OOS $R^2$ του
+  `rad` (Πίνακας Δ7.1) εμφανίζεται υψηλότερο από το εντός-δείγματος $R^2$ = 0.79· αυτό δεν είναι
+  αντίφαση αλλά τεχνούργημα του δείκτη αναφοράς: το `rad` είναι σχεδόν πάντα θετική σειρά χαμηλής
+  διακύμανσης, οπότε ο μέσος του train-set αποτελεί ασθενή benchmark και διογκώνει το OOS $R^2$.]
+  Όμως, όπως τονίστηκε, αυτό είναι **ανακατασκευή του καλαθιού** (σύγχρονοι παλινδρομητές),
+  **όχι πρόβλεψη**.
+* **Γνήσια προβλεψιμότητα (έλεγχος υστέρησης):** Όταν επαναλάβουμε το ίδιο σχήμα με **πραγματική
+  υστέρηση μίας ημέρας** ($X_{t-1}\to Y_t$), το out-of-sample $R^2$ καταρρέει σε
+  **`r round(d7_r2_lag, 3)`** (πρακτικά μηδέν / αρνητικό) — οι ημερήσιες αποδόσεις του DIA **δεν
+  είναι προβλέψιμες** από τις χθεσινές αποδόσεις των μετοχών, σύμφωνα με την υπόθεση
+  αποτελεσματικής αγοράς. Το υψηλό σύγχρονο $R^2$ αντανακλά αποκλειστικά τη λογιστική ταυτότητα
+  «δείκτης ≈ καλάθι συστατικών», όχι προβλεπτική ικανότητα.
+
+## Δ8. Πολυπαραγοντικό Δομικό Υπόδειγμα (SEM) {#d8}
+
+Επεκτείνουμε το μινιμαλιστικό SEM της B5 σε **τέσσερις λανθάνοντες κλαδικούς παράγοντες**
+(Tech, Fin, Comm, Health), καθένας με 3 δείκτες, που μαζί ερμηνεύουν το κέντρο της απόδοσης του
+DIA. Χρησιμοποιούμε τον **εύρωστο εκτιμητή MLR**.
+
+```{r ext-sem-multi}
+# Σε ποσοστιαίες αποδόσεις (×100) για αριθμητική ευστάθεια του εκτιμητή.
+sem_data2 <- data.frame(Y_mid = Y_mid, X_mid) * 100
+model2 <- '
+  Tech   =~ NVDA + AAPL + MSFT
+  Fin    =~ BAC + JPM + V
+  Comm   =~ GOOGL + META + NFLX
+  Health =~ LLY + JNJ + UNH
+  Y_mid ~ Tech + Fin + Comm + Health
+'
+fit2  <- tryCatch(suppressWarnings(lavaan::sem(model2, data = sem_data2, estimator = "MLR")),
+                  error = function(e) NULL)
+conv2 <- !is.null(fit2) && isTRUE(lavaan::lavInspect(fit2, "converged"))
+# έλεγχος παραδεκτότητας (όχι μόνο σύγκλισης): Heywood case (αρνητική εκτιμώμενη
+# διακύμανση) ή τυποποιημένος συντελεστής > 1 (αδύνατος) -> μη παραδεκτή λύση.
+neg_var2 <- NA; max_std2 <- NA; adm2 <- FALSE
+if (conv2) {
+  pev      <- lavaan::parameterEstimates(fit2)
+  neg_var2 <- any(pev$op == "~~" & pev$lhs == pev$rhs & pev$est < 0)
+  ss2      <- lavaan::standardizedSolution(fit2)
+  max_std2 <- max(abs(ss2$est.std[ss2$op == "~"]))
+  adm2     <- !neg_var2 && max_std2 <= 1.0001
+}
+if (conv2) {
+  fm2 <- lavaan::fitMeasures(fit2, c("cfi", "tli", "rmsea", "srmr", "chisq", "df"))
+  ktab(data.frame(Δείκτης = names(fm2), Τιμή = round(as.numeric(fm2), 3), check.names = FALSE),
+       caption = "Πίνακας Δ8.1 — Μέτρα προσαρμογής πολυπαραγοντικού SEM (MLR).", row.names = FALSE)
+  if (!adm2) cat("\nΠΡΟΣΟΧΗ — ΜΗ ΠΑΡΑΔΕΚΤΗ ΛΥΣΗ (Heywood case):",
+                 if (isTRUE(neg_var2)) "αρνητική εκτιμώμενη διακύμανση·" else "",
+                 sprintf("μέγιστος τυποπ. δομικός συντελεστής = %.2f (> 1).\n", max_std2))
+} else {
+  fm2 <- NULL
+  cat("Το πολυπαραγοντικό SEM ΔΕΝ συνέκλινε: πρόβλημα ταυτοποίησης — βλ. σχολιασμό.\n")
+}
+```
+
+```{r ext-sem-struct}
+if (conv2) {
+  pe2 <- lavaan::standardizedSolution(fit2)
+  struct <- pe2[pe2$op == "~", c("rhs", "est.std", "pvalue")]
+  names(struct) <- c("Παράγοντας", "Τυποπ. συντελεστής", "p-value")
+  ktab(struct, digits = 3, row.names = FALSE,
+       caption = "Πίνακας Δ8.2 — Δομικοί συντελεστές: κέντρο DIA ανά κλαδικό παράγοντα.")
+} else {
+  cat("(Δεν εμφανίζονται δομικοί συντελεστές — το μοντέλο δεν συνέκλινε.)\n")
+}
+```
+
+```{r ext-sem-facts, include=FALSE}
+d8_conv <- conv2
+d8_cfi  <- if (conv2) fm2[["cfi"]] else NA_real_
+```
+
+#### Σχολιασμός Δ8
+
+* **Παραδεκτότητα της λύσης:** `r if (!isTRUE(conv2)) "Το μοντέλο **δεν συγκλίνει**." else if (!isTRUE(adm2)) paste0("Αν και ο εκτιμητής επιστρέφει αριθμητική σύγκλιση (CFI = ", round(d8_cfi, 3), "), η λύση είναι **μη παραδεκτή — Heywood case**: ", if (isTRUE(neg_var2)) "εμφανίζεται **αρνητική εκτιμώμενη διακύμανση** (της διαταραχής της δομικής εξίσωσης του Y_mid — μορφή Heywood case) και " else "", "ο τυποποιημένος δομικός συντελεστής φτάνει το **", round(max_std2, 2), " (> 1, μαθηματικά αδύνατο)**. Επομένως οι επιμέρους δομικοί συντελεστές του Πίνακα Δ8.2 **ΔΕΝ είναι ερμηνεύσιμοι** — δεν μπορούμε να πούμε «ποιος κλάδος επηρεάζει περισσότερο».") else paste0("Η λύση είναι παραδεκτή, με CFI = ", round(d8_cfi, 3), ".")`
+* **Αιτία — ταυτοποίηση & πολυσυγγραμμικότητα:** Οι κλαδικοί παράγοντες είναι **έντονα
+  συσχετισμένοι** (κοινός παράγοντας αγοράς), γεγονός που — όπως προειδοποιεί η Διάλεξη 16 —
+  οδηγεί ακριβώς σε τέτοιες μη παραδεκτές/ασταθείς λύσεις (το συνολικό «μήνυμα αγοράς» μοιράζεται
+  ασταθώς μεταξύ συσχετισμένων παραγόντων, παράγοντας συντελεστές > 1 και αρνητικές διακυμάνσεις).
+  Πρόκειται για **γνήσιο μεθοδολογικό περιορισμό** του πολυπαραγοντικού SEM σε ισχυρά συσχετισμένα
+  χρηματιστηριακά δεδομένα — και είναι ο λόγος που το **μινιμαλιστικό SEM της B5 (ένας παράγοντας)
+  είναι η σταθερά ερμηνεύσιμη επιλογή**.
+
+## Δ9. Το rad ως Εκτιμητής Αστάθειας: Parkinson και GARCH {#d9}
+
+Το Μέρος B μεταχειρίζεται το `rad` ως «τη διαστηματική πλευρά» των δεδομένων. Εδώ το
+συνδέουμε ρητά με τη χρηματοοικονομική βιβλιογραφία: το κανονικοποιημένο ημι-εύρος είναι
+ένας **range-based εκτιμητής αστάθειας** της οικογένειας του @parkinson1980, και η δυναμική
+του συγκρίνεται με τη δεσμευμένη αστάθεια ενός GARCH(1,1) [@engle1982; @bollerslev1986].
+
+### Δ9.1 Σύγκριση με τον εκτιμητή του Parkinson
+
+Ο @parkinson1980 έδειξε ότι η ημερήσια διακύμανση εκτιμάται αποδοτικά από το εύρος:
+$\hat\sigma^2_{P,t} = \ln^2(H_t/L_t) / (4\ln 2)$. Για μικρές ημερήσιες κινήσεις
+$\ln(H/L) \approx (H-L)/L$, οπότε το $\text{rad}_t = (H_t-L_t)/(2C_{t-1})$ είναι, ως προς
+κλίμακα, το ίδιο μέγεθος — το επιβεβαιώνουμε εμπειρικά.
+
+```{r ext-parkinson, fig.height=3.8, fig.cap="Το rad του DIA έναντι του εκτιμητή Parkinson: πρακτικά ταυτόσημα (ως προς κλίμακα)."}
+dia_ohlc <- prices_list$DIA
+sig_park <- sqrt(log(as.numeric(Hi(dia_ohlc)) / as.numeric(Lo(dia_ohlc)))^2 / (4 * log(2)))
+# ευθυγράμμιση με το panel (το panel χάνει την 1η μέρα λόγω lag)
+park_df <- data.frame(Date = index(dia_ohlc), sig_park = sig_park)
+park_df <- park_df[match(as.Date(rownames(df_classical)), park_df$Date), ]
+d9_cor_park <- cor(park_df$sig_park, Y_rad)
+
+ggplot(data.frame(park = park_df$sig_park, rad = Y_rad), aes(park, rad)) +
+  geom_point(alpha = 0.15, colour = "#0072B2", size = 0.7) +
+  geom_smooth(method = "lm", se = FALSE, colour = "#D55E00", linewidth = 0.5) +
+  labs(title = sprintf("Δ9.1 — rad vs Parkinson: r = %.4f", d9_cor_park),
+       x = "Εκτιμητής Parkinson (ημερήσιο σ)", y = "rad (κανονικοποιημένο ημι-εύρος)") +
+  theme_paper()
+```
+
+#### Σχολιασμός Δ9.1
+
+* Η συσχέτιση rad–Parkinson είναι **r = `r round(d9_cor_park, 4)`** — πρακτικά ταύτιση. Το
+  `rad` της διαστηματικής αναπαράστασης **είναι** ο εκτιμητής αστάθειας του Parkinson (με
+  διαφορετική κανονικοποίηση: $C_{t-1}$ αντί για $L_t$ στον παρονομαστή, και σταθερά κλίμακας
+  $1/\sqrt{\ln 2} \approx 1.20$ — εξ ου και ο εμπειρικός λόγος $\sigma_P/\text{rad} \approx 1.20$).
+  Η διαστηματική
+  προσέγγιση του Μέρους B αποκτά έτσι άμεση θεωρητική θεμελίωση στη βιβλιογραφία
+  range-based volatility· ο εκτιμητής των @garmanklass1980 αποτελεί το OHLC-βελτιωμένο
+  ανάλογο και φυσική μελλοντική επέκταση.
+
+### Δ9.2 GARCH(1,1) και σύγκριση με το rad
+
+Η Δ6 τεκμηρίωσε ισχυρές ARCH επιδράσεις (LM p < 0.001) και τόσο η Γ3 όσο και η B2
+παραπέμπουν σε GARCH ως το ορθό δυναμικό μοντέλο αστάθειας. Το προσαρμόζουμε εδώ. Το
+`tseries::garch` προσαρμόζει υπόδειγμα **μηδενικού μέσου**· η μέση ημερήσια απόδοση του DIA
+(≈ 0.0004) είναι αμελητέα, οπότε αυτό δεν επηρεάζει ουσιαστικά την εκτίμηση της αστάθειας.
+
+```{r ext-garch, fig.height=3.8, fig.cap="Δεσμευμένη αστάθεια GARCH(1,1) του DIA και κανονικοποιημένο ημι-εύρος rad."}
+# GARCH(1,1) στις ποσοστιαίες αποδόσεις (x100 για αριθμητική ευστάθεια του optimizer)
+r_pct <- Y_classical * 100
+g_fit <- tryCatch(suppressWarnings(tseries::garch(r_pct, order = c(1, 1), trace = FALSE)),
+                  error = function(e) NULL)
+if (!is.null(g_fit)) {
+  co <- coef(g_fit)                       # a0 (omega), a1 (ARCH), b1 (GARCH)
+  sig_g <- as.numeric(fitted(g_fit)[, 1]) / 100   # conditional sigma, πίσω σε απλές μονάδες
+  d9_persist <- unname(co["a1"] + co["b1"])
+  d9_cor_garch <- cor(sig_g, Y_rad, use = "complete.obs")
+  # Ljung-Box στα τυποποιημένα τετραγωνισμένα κατάλοιπα: απορρόφησε το ARCH;
+  z <- na.omit(residuals(g_fit))
+  d9_lb_g <- Box.test(z^2, lag = 10, type = "Ljung-Box")$p.value
+  cat(sprintf("GARCH(1,1): omega=%.4f  alpha=%.3f  beta=%.3f  (a+b=%.3f)\n",
+              co["a0"], co["a1"], co["b1"], d9_persist))
+  cat(sprintf("cor(sigma_t, rad_t) = %.3f   Ljung-Box z^2 (lag 10): p = %.3f\n",
+              d9_cor_garch, d9_lb_g))
+  gd <- data.frame(Date = as.Date(rownames(df_classical)),
+                   `GARCH σ` = sig_g, rad = Y_rad, check.names = FALSE)
+  gd_long <- rbind(data.frame(Date = gd$Date, value = gd$`GARCH σ`, Σειρά = "GARCH σ_t"),
+                   data.frame(Date = gd$Date, value = gd$rad,       Σειρά = "rad_t"))
+  print(
+    ggplot(gd_long, aes(Date, value, colour = Σειρά)) +
+      geom_line(linewidth = 0.3, alpha = 0.85, na.rm = TRUE) +
+      scale_colour_manual(values = c("GARCH σ_t" = "#D55E00", "rad_t" = "#56B4E9")) +
+      labs(title = "Δ9.2 — Δεσμευμένη αστάθεια GARCH vs rad (DIA)",
+           x = NULL, y = "Ημερήσια αστάθεια", colour = NULL) +
+      theme_paper() + theme(legend.position = "top")
+  )
+} else {
+  d9_persist <- NA; d9_cor_garch <- NA; d9_lb_g <- NA
+  cat("Το GARCH(1,1) δεν συνέκλινε στο δείγμα - αναφέρεται ως περιορισμός.\n")
+}
+```
+
+#### Σχολιασμός Δ9.2
+
+* `r if (!is.null(g_fit)) paste0("Το GARCH(1,1) εκτιμά **επιμονή αστάθειας α+β = ", round(d9_persist, 3), "** — τυπική τιμή για ημερήσιες αποδόσεις δεικτών (ισχυρό volatility clustering, κοντά στη μονάδα αλλά στάσιμο). Τα τυποποιημένα κατάλοιπα δεν εμφανίζουν πλέον ARCH δομή (Ljung-Box στα z² p = ", signif(d9_lb_g, 2), ") — το μοντέλο απορρόφησε την ετεροσκεδαστικότητα που τεκμηρίωσε η Δ6.") else "Το μοντέλο δεν συνέκλινε — αναφέρεται ως περιορισμός."`
+* **Σύνδεση με το rad:** η συσχέτιση της δεσμευμένης αστάθειας $\sigma_t$ με το
+  $\text{rad}_t$ είναι **`r if (!is.null(g_fit)) round(d9_cor_garch, 3) else NA`**. Οι δύο
+  σειρές παρακολουθούν τον ίδιο κοινό κύκλο αστάθειας (2022, Αύγ 2024, Απρ 2025), με το
+  GARCH να δίνει την **εξομαλυμένη/επίμονη** συνιστώσα και το rad την **ημερήσια
+  πραγματοποιημένη** — δύο συμπληρωματικές όψεις: το rad είναι θορυβώδης αλλά άμεσος
+  (range-based) εκτιμητής, το GARCH φιλτραρισμένη δυναμική πρόβλεψη. Σημειώνεται ότι
+  πρόκειται για **σύγχρονη συν-κίνηση**, όχι αξιολόγηση προβλεπτικής ικανότητας.
+
+## Δ10. Χρονική Σταθερότητα: Rolling Window και Υποπερίοδοι {#d10}
+
+Η Γ3 αναγνώρισε ως περιορισμό τον **στατικό χρονικό ορίζοντα**. Εδώ ποσοτικοποιούμε τη
+χρονική μεταβλητότητα της σχέσης: κυλιόμενο παράθυρο 250 ημερών (≈ 1 έτος συναλλαγών)
+για το R² και τους συντελεστές, και σύγκριση των δύο μεγάλων υποπεριόδων.
+
+```{r ext-rolling, fig.height=4.6, fig.cap="Κυλιόμενο (250 ημερών) R² του κλασικού μοντέλου και κυλιόμενοι συντελεστές των JPM, V, HD."}
+dates_cl <- as.Date(rownames(df_classical))
+dat_cl   <- data.frame(Y = Y_classical, X_classical)
+win <- 250
+idx_end <- win:nrow(dat_cl)
+# ένα lm ανά παράθυρο (~1000 προσαρμογές, δευτερόλεπτα)
+roll <- vapply(idx_end, function(i) {
+  m <- lm(Y ~ ., data = dat_cl[(i - win + 1):i, ])
+  c(r2 = summary(m)$r.squared, coef(m)[c("JPM", "V", "HD")])
+}, numeric(4))
+roll_df <- data.frame(Date = dates_cl[idx_end], t(roll))
+names(roll_df) <- c("Date", "R2", "JPM", "V", "HD")
+roll_long <- reshape(roll_df, direction = "long", varying = c("R2","JPM","V","HD"),
+                     v.names = "value", times = c("R2","JPM","V","HD"),
+                     timevar = "Μέγεθος")
+roll_long$Μέγεθος <- factor(roll_long$Μέγεθος,
+                            levels = c("R2", "JPM", "V", "HD"),
+                            labels = c("Κυλιόμενο R²", "β JPM", "β V", "β HD"))
+ggplot(roll_long, aes(Date, value)) +
+  geom_line(colour = "#0072B2", linewidth = 0.4) +
+  facet_wrap(~ Μέγεθος, ncol = 2, scales = "free_y") +
+  labs(title = "Δ10.1 — Κυλιόμενη (250 ημ.) εκτίμηση: R² και συντελεστές",
+       x = NULL, y = NULL) +
+  theme_paper()
+```
+
+```{r ext-subperiods}
+# υποπερίοδοι: 2021-2022 (πληθωρισμός/bear) vs 2023-2025 (AI rally κ.ε.)
+cutd <- as.Date("2023-01-01")
+sp <- function(rows) {
+  m1 <- lm(Y ~ ., data = data.frame(Y = Y_classical, X_classical)[rows, ])
+  m2 <- lm(Y ~ ., data = data.frame(Y = Y_rad, X_rad)[rows, ])
+  c(`n ημέρες`   = sum(rows),
+    `R² κλασικό` = summary(m1)$r.squared,
+    `R² rad`     = summary(m2)$r.squared,
+    `β JPM`      = unname(coef(m1)["JPM"]))
+}
+sub_tab <- rbind(`2021–2022 (bear/πληθωρισμός)` = sp(dates_cl <  cutd),
+                 `2023–2025 (AI rally κ.ε.)`    = sp(dates_cl >= cutd))
+ktab(sub_tab, digits = 3,
+     caption = "Πίνακας Δ10.1 — Υποπερίοδοι: μέγεθος, R² (κλασικό και rad), συντελεστής JPM.")
+```
+
+```{r ext-rolling-facts, include=FALSE}
+d10_r2_rng  <- range(roll_df$R2)
+d10_rad_gap <- abs(sub_tab[1, "R² rad"] - sub_tab[2, "R² rad"])
+```
+
+#### Σχολιασμός Δ10
+
+* Το κυλιόμενο R² κινείται μεταξύ **`r round(d10_r2_rng[1], 2)`** και
+  **`r round(d10_r2_rng[2], 2)`**: η ερμηνευτική ισχύς του καλαθιού είναι διαχρονικά υψηλή
+  αλλά όχι σταθερή — οι συντελεστές (π.χ. JPM) μετατοπίζονται αισθητά μεταξύ καθεστώτων,
+  επιβεβαιώνοντας με στοιχεία τον περιορισμό της Γ3 περί στατικού ορίζοντα.
+* Στις υποπερίοδοι (Πίνακας Δ10.1), το **R² του rad** διαφέρει μόλις κατά
+  **`r round(d10_rad_gap, 2)`** μεταξύ 2021–22 και 2023–25.
+  `r if (d10_rad_gap < 0.05) "Η σταθερότητα αυτή είναι αξιοσημείωτη: ο κοινός παράγοντας ενδοημερήσιας αστάθειας παρέμεινε εξίσου ισχυρός και στα δύο καθεστώτα του δείγματός μας — η εξάρτηση από την περίοδο για την οποία προειδοποιεί η εκφώνηση (FAQ) δεν εκδηλώνεται σε αυτή την κλίμακα υποδιαίρεσης. Πιθανή εξήγηση: και οι δύο υποπερίοδοι περιέχουν επεισόδια υψηλής αστάθειας (2022 bear· Αύγ 2024 / Απρ 2025), οπότε καμία δεν είναι πραγματικά «ήρεμη»." else "Η διαφορά αυτή αποτυπώνει την εξάρτηση από την περίοδο για την οποία προειδοποιεί η εκφώνηση (FAQ): σε ηρεμότερες αγορές ο κοινός παράγοντας αστάθειας εξασθενεί."`
+
+## Δ11. Αβεβαιότητα Εκτιμήσεων: Block Bootstrap και Time-Series CV {#d11}
+
+Τα R² των βασικών μοντέλων αναφέρονται ως σημειακές τιμές. Εδώ ποσοτικοποιούμε την
+αβεβαιότητά τους με **moving-block bootstrap** [@kunsch1989] — τα μπλοκ (μήκους 22 ημερών
+≈ 1 μήνας συναλλαγών) διατηρούν την αυτοσυσχέτιση/volatility clustering εντός μπλοκ — και
+επεκτείνουμε τον έλεγχο του Δ7 σε **5 διαδοχικά χρονικά folds**.
+
+```{r ext-bootstrap}
+set.seed(1125886)
+block_boot_r2 <- function(Y, X, B = 1000, l = 22) {
+  n <- length(Y); nb <- ceiling(n / l)
+  vapply(seq_len(B), function(b) {
+    starts <- sample.int(n - l + 1, nb, replace = TRUE)
+    idx <- as.vector(outer(0:(l - 1), starts, "+"))[1:n]   # συρραφή μπλοκ
+    d <- data.frame(Y = Y[idx], X[idx, ])
+    summary(lm(Y ~ ., data = d))$r.squared
+  }, numeric(1))
+}
+bb_cl  <- block_boot_r2(Y_classical, X_classical)
+bb_rad <- block_boot_r2(Y_rad, X_rad)
+ci <- function(v) quantile(v, c(0.025, 0.975))
+boot_tab <- rbind(
+  `Κλασικό R²` = c(Εκτίμηση = summary(lm(Y ~ ., data.frame(Y = Y_classical, X_classical)))$r.squared,
+                   ci(bb_cl)),
+  `rad R²`     = c(Εκτίμηση = summary(lm(Y ~ ., data.frame(Y = Y_rad, X_rad)))$r.squared,
+                   ci(bb_rad)))
+colnames(boot_tab) <- c("Εκτίμηση", "2.5%", "97.5%")
+ktab(boot_tab, digits = 3,
+     caption = "Πίνακας Δ11.1 — Moving-block bootstrap: 95\\% διαστήματα εμπιστοσύνης (B = 1000, l = 22).")
+```
+
+```{r ext-tscv}
+# 5 expanding-origin folds: train έως 60..80%, test το επόμενο 5% (σύγχρονη ανακατασκευή,
+# ίδια ειλικρινής ανάγνωση με το Δ7 - ΟΧΙ ισχυρισμός πρόβλεψης)
+n <- length(Y_classical)
+origins <- floor(n * seq(0.60, 0.80, by = 0.05))
+cv_r2 <- vapply(origins, function(cutp) {
+  test <- (cutp + 1):min(cutp + floor(0.05 * n), n)
+  d <- data.frame(Y = Y_classical, X_classical)
+  m <- lm(Y ~ ., data = d[seq_len(cutp), ])
+  ph <- predict(m, newdata = d[test, ])
+  1 - sum((Y_classical[test] - ph)^2) /
+      sum((Y_classical[test] - mean(Y_classical[seq_len(cutp)]))^2)
+}, numeric(1))
+cv_tab <- data.frame(Fold = seq_along(origins),
+                     `Τέλος train` = format(as.Date(rownames(df_classical))[origins]),
+                     `OOS R²` = round(cv_r2, 3), check.names = FALSE)
+ktab(cv_tab, digits = 3, row.names = FALSE,
+     caption = "Πίνακας Δ11.2 — Expanding-origin CV (5 folds): σύγχρονη ανακατασκευή εκτός δείγματος.")
+```
+
+```{r ext-boot-facts, include=FALSE}
+d11_ci_cl  <- ci(bb_cl);  d11_ci_rad <- ci(bb_rad)
+d11_cv_m   <- mean(cv_r2); d11_cv_sd <- sd(cv_r2)
+```
+
+#### Σχολιασμός Δ11
+
+* **Bootstrap:** Το 95% διάστημα για το κλασικό R² είναι
+  [**`r round(d11_ci_cl[1], 3)`**, **`r round(d11_ci_cl[2], 3)`**] και για το rad R²
+  [**`r round(d11_ci_rad[1], 3)`**, **`r round(d11_ci_rad[2], 3)`**] — στενά διαστήματα
+  που δείχνουν ότι τα σημειακά R² δεν είναι προϊόν δειγματοληπτικού θορύβου, ακόμη και
+  όταν σεβαστούμε την εξάρτηση της χρονοσειράς (μπλοκ αντί για ανεξάρτητες παρατηρήσεις).
+  (Το bootstrap του R², φραγμένου στο $[0,1]$, μπορεί να δίνει ελαφρώς ασύμμετρα διαστήματα·
+  εδώ η μεροληψία είναι αμελητέα — οι μέσες bootstrap τιμές 0.887/0.783 σχεδόν συμπίπτουν με
+  τα σημειακά 0.885/0.790.)
+* **Time-series CV:** Στα 5 διαδοχικά folds το εκτός-δείγματος R² (σύγχρονη ανακατασκευή)
+  είναι **`r round(d11_cv_m, 3)` ± `r round(d11_cv_sd, 3)`** — η σταθερότητα του Δ7 δεν
+  εξαρτάται από ένα συγκεκριμένο σημείο διαχωρισμού.
+
+## Παράρτημα Αναπαραγωγιμότητας {#repro}
+
+Η μελέτη είναι πλήρως αναπαραγώγιμη: (α) σπόρος τυχαιότητας `set.seed(1125886)` (= ΑΜ
+φοιτητή) σε όλα τα στοχαστικά βήματα· (β) τα δεδομένα (Yahoo Finance, 16 tickers OHLC,
+04/01/2021–30/12/2025) συνοδεύουν το `.Rmd` ως τοπικό στιγμιότυπο CSV στον φάκελο
+`data/`, ώστε το knit να μην εξαρτάται από το δίκτυο· (γ) οι εξαρτήσεις ανάλυσης
+εγκαθίστανται αυτόματα από το setup chunk. Το υπολογιστικό περιβάλλον:
+
+```{r session-info, size="footnotesize"}
+sessionInfo()
+```
+
+---
+
+# Βιβλιογραφία {-}
+
+::: {#refs}
+:::
