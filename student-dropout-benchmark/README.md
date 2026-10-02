@@ -1,6 +1,6 @@
 # Student Dropout Prediction — A Reproducible Benchmark
 
-> **Full source: [Asinoth/edm-dropout-benchmark](https://github.com/Asinoth/edm-dropout-benchmark)**
+> **Full source: [Alexandros-Tsagkanos/edm-dropout-benchmark](https://github.com/Alexandros-Tsagkanos/edm-dropout-benchmark)**
 >
 > This directory is a summary. The code, results and technical report
 > live in their own repository.
